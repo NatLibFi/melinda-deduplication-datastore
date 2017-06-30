@@ -30,6 +30,8 @@ async function start() {
 
   const connection = await getDBConnection(dbConnectionConfiguration);
   const dataStoreService = createDataStoreService(connection);
+  await dataStoreService.updateSchema();
+  
   const httpService = createHTTPService(dataStoreService);
 
   await httpService.listen(DATASTORE_HTTP_PORT);
