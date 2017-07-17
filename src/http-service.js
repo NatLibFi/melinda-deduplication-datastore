@@ -1,18 +1,77 @@
+// @flow
+import type { DataStoreService } from './datastore-service.flow';
+
 const promisify = require('es6-promisify');
 const express = require('express');
+const bodyParser = require('body-parser');
+const HttpStatus = require('http-status-codes');
+const MarcRecord = require('marc-record-js');
 const debug = require('debug')('http-service');
+const logger = require('melinda-deduplication-common/utils/logger');
 
-function createHTTPService(dataStoreService) {
+function createHTTPService(dataStoreService: DataStoreService) {
   const app = express();
   const listen = promisify(app.listen, app);
+  app.use(bodyParser.json({ limit: '1000kb' }));
+  app.use((error, req, res, next) => {
+    if (error instanceof SyntaxError) {
+      logger.log('info', 'The client sent invalid json as request body:', error.message);
+      res.sendStatus(error.statusCode);
+    } else {
+      next();
+    }
+  });
 
-  app.get('/', async function (req, res) {
-    debug('request');
+  app.get('/record/:base/:id', async function (req, res) {
+    const base = req.params.base;
+    const recordId = req.params.id;
+    logger.log('info', 'get request for record', req.params);
 
-    const solution = await dataStoreService.loadRecord("", "");
-    res.send(`The solution is: ${solution}`);
+    try {
+      const record = await dataStoreService.loadRecord(base, recordId);
+      res.send(record);
+    } catch(error) {
+      if (error.name === 'NOT_FOUND') {
+        return res.sendStatus(HttpStatus.NOT_FOUND);
+      }
+      logger.log('error', error);
+      res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
   });
+
+  app.put('/record/:base/:id', async function (req, res) {
+    const base = req.params.base;
+    const recordId = req.params.id;
+    logger.log('info', 'put request for record', req.params);
+
+    try  {
+      
+      const record = parseRecord(req.body);
+      logger.log('info', `Record:\n${record.toString()}`);
+
+      await dataStoreService.saveRecord(base, recordId, record);
+      res.sendStatus(HttpStatus.OK);
+
+    } catch(error) {
+      if (error.name === 'ParseRecordError') {
+        logger.log('info', error.message);
+        return res.sendStatus(HttpStatus.BAD_REQUEST);
+      }
+      logger.log('error', error);
+      return res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  });
+
+  function parseRecord(requestBody) {
+    try {
+      return new MarcRecord(requestBody);
+    } catch(error) {
+      const parseRecordError = new Error('Failed to parse marc record from body');
+      parseRecordError.name = 'ParseRecordError';
+      throw parseRecordError;
+    }
+  }
 
   return {
     listen

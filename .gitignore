@@ -1,3 +1,5 @@
 build
 node_modules
 setup_env.sh
+.vscode
+test_record.json

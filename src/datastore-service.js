@@ -2,6 +2,7 @@
 import type { DataStoreService } from './datastore-service.flow';
 const promisify = require('es6-promisify');
 const _ = require('lodash');
+const MarcRecord = require('marc-record-js');
 const logger = require('melinda-deduplication-common/utils/logger');
 
 const utils = require('melinda-deduplication-common/utils/utils');
@@ -17,12 +18,13 @@ function createDataStoreService(connection: any): DataStoreService {
 
     try {
 
-      const dbVersion = await query('select version from meta').then(_.head);
+      const dbVersionRow = await query('select version from meta').then(_.head);
+      const dbVersion = dbVersionRow.version;
       logger.log('info', `Database version ${dbVersion}`);
       logger.log('info', `Schema version ${schemaVersion}`);
       if (schemaVersion !== dbVersion) {
         logger.log('info', `Updating database version from ${dbVersion} to ${schemaVersion}`);
-        throw new Error('Not implemented');
+        throw new Error('Database migration for versions not implemented');
         // migrate!
         // check if schema update required
         // run migration
@@ -34,7 +36,9 @@ function createDataStoreService(connection: any): DataStoreService {
         logger.log('info', 'Initializing database');
         await utils.sequence(initialDatabaseSchema.map(sqlString => () => query(sqlString)));
         logger.log('info', 'Database initialized');
+        return;
       }
+      throw error;
     }
   }
 
@@ -45,14 +49,21 @@ function createDataStoreService(connection: any): DataStoreService {
         if (error) {
           return reject(error);
         }
-        resolve(results[0].solution);
+        const record = new MarcRecord();
+        
+        resolve(record);
       });      
     });
   }
+
+  function saveRecord(base, recordId, record) {
+
+  }    
   
   return {
     updateSchema,
-    loadRecord
+    loadRecord,
+    saveRecord,
   };
 }
 
