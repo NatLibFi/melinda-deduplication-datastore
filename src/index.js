@@ -2,7 +2,6 @@
 
 const mysql = require('mysql');
 
-
 const logger = require('melinda-deduplication-common/utils/logger');
 logger.log('info', 'Starting melinda-deduplication-datastore');
 
@@ -17,6 +16,8 @@ const DATASTORE_MYSQL_USER = utils.readEnvironmentVariable('DATASTORE_MYSQL_USER
 const DATASTORE_MYSQL_PASSWORD = utils.readEnvironmentVariable('DATASTORE_MYSQL_PASSWORD');
 const DATASTORE_MYSQL_DATABASE = utils.readEnvironmentVariable('DATASTORE_MYSQL_DATABASE');
 
+const REBUILD_CANDIDATE_TERMS =  utils.readEnvironmentVariable('REBUILD_CANDIDATE_TERMS', false);
+
 const dbConnectionConfiguration = {
   host: DATASTORE_MYSQL_HOST,
   user: DATASTORE_MYSQL_USER,
@@ -29,8 +30,12 @@ start().catch(error => logger.log('error', error.message, error));
 async function start() {
 
   const connection = await getDBConnection(dbConnectionConfiguration);
+
   const dataStoreService = createDataStoreService(connection);
   await dataStoreService.updateSchema();
+  if (REBUILD_CANDIDATE_TERMS) {
+    await dataStoreService.rebuildCandidateTerms();
+  }
   
   const httpService = createHTTPService(dataStoreService);
 

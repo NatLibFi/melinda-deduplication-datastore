@@ -63,6 +63,16 @@ function createHTTPService(dataStoreService: DataStoreService) {
     }
   });
 
+  app.get('/candidates/:base/:id', async function (req, res) {
+    const base = req.params.base;
+    const recordId = req.params.id;
+    logger.log('info', 'get request for candidates', req.params);
+
+    const candidates = await dataStoreService.loadCandidates(base, recordId);
+    console.log(candidates.map(c => c.term));
+    return res.send(candidates);
+  });
+
   function parseRecord(requestBody) {
     try {
       return new MarcRecord(requestBody);

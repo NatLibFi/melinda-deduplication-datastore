@@ -8,13 +8,15 @@ const jsdiff = require('diff');
 const logger = require('melinda-deduplication-common/utils/logger');
 const utils = require('melinda-deduplication-common/utils/utils');
 const initialDatabaseSchema = require('./schema/datastore-schema');
+const createCandidateService = require('./candidate-service');
 
 const migrations = '???';
 const schemaVersion = 1;
 
 function createDataStoreService(connection: any): DataStoreService {
   const query = promisify(connection.query, connection);
-
+  const candidateService = createCandidateService(connection);
+  
   async function updateSchema() {
 
     try {
@@ -41,6 +43,10 @@ function createDataStoreService(connection: any): DataStoreService {
       }
       throw error;
     }
+  }
+
+  async function rebuildCandidateTerms() {
+    return candidateService.rebuild();
   }
 
   async function loadRecord(base, recordId) {
@@ -91,48 +97,43 @@ function createDataStoreService(connection: any): DataStoreService {
     const row = {
       id: recordId,
       base: base,
-      groupingKeyA: createGroupingKeyA(record),
-      groupingKeyB: createGroupingKeyB(record),
       record: record.toString(),
       parentId: parseParentId(record),
       timestamp: now
     };
     
     await query(`
-      insert into record (id, base, groupingKeyA, groupingKeyB, record, parentId, timestamp) 
-        values (?,?,?,?,?,?,?) 
+      insert into record (id, base, record, parentId, timestamp) 
+        values (?,?,?,?,?) 
       ON DUPLICATE KEY UPDATE 
-        groupingKeyA=values(groupingKeyA), 
-        groupingKeyB=values(groupingKeyB), 
         record=values(record), 
         parentId=values(parentId), 
         timestamp=values(timestamp)`, 
       [
         row.id, 
         row.base, 
-        row.groupingKeyA, 
-        row.groupingKeyB, 
         row.record, 
         row.parentId, 
         row.timestamp
       ]);
     
+    logger.log('info', `Record ${base}/${recordId} saved succesfully.`);
+
+    await candidateService.update(base, recordId, record);
+    
   }
   
   return {
+    rebuildCandidateTerms,
     updateSchema,
     loadRecord,
     saveRecord,
+    loadCandidates: candidateService.loadCandidates
   };
 
 }
 
-function createGroupingKeyA(record) {
-  return '';
-}
-function createGroupingKeyB(record) {
-  return '';
-}
+// TODO
 function parseParentId(record) {
   return '';
 }

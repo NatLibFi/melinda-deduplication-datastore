@@ -28,4 +28,20 @@ create table if not exists delta (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 `;
 
-module.exports = [metaTable, addVersion, recordTable, deltaTable];
+const candidatesNeighbourhoodByAuthor = `
+create table if not exists candidatesByAuthor (
+  id varchar(60) NOT NULL,
+  base varchar(20) NOT NULL,
+  term text
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+`;
+
+const candidatesNeighbourhoodByTitle = `
+create table if not exists candidatesByTitle (
+  id varchar(60) NOT NULL,
+  base varchar(20) NOT NULL,
+  term text
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+`;
+
+module.exports = [metaTable, addVersion, recordTable, deltaTable, candidatesNeighbourhoodByAuthor, candidatesNeighbourhoodByTitle];
