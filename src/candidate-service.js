@@ -16,6 +16,11 @@ function createCandidateService(connection: any): CandidateService {
 
   async function rebuild() {
     const allRecords = await query('select id, base, record from record');
+  
+    for (const tableName of TABLE_NAMES) {
+      await query(`delete from ${tableName}`);
+    }
+  
     for (const row of allRecords) {
       const record = MarcRecord.fromString(row.record);
       await update(row.base, row.id, record);
@@ -26,17 +31,20 @@ function createCandidateService(connection: any): CandidateService {
     logger.log('info', `Resetting candidate query terms for ${base}/${recordId}`);
 
     const resetTerms = async (tableName, terms) => {
-
       await query(`delete from ${tableName} where id=? and base=?`, [recordId, base]);
       await query(`insert into ${tableName} (id, base, term) values (?,?,?)`, [recordId, base, terms]);
-
     };
 
-    const byAuthor = createGroupingByAuthor(record);
-    const byTitle = createGroupingByTitle(record);
+    const termsByAuthor = createGroupingTermsByAuthor(record);
+    const termsByTitle = createGroupingTermsByTitle(record);
+
+    for (const term of termsByAuthor) {
+      await resetTerms('candidatesByAuthor', term);
+    }
+    for (const term of termsByTitle) {
+      await resetTerms('candidatesByTitle', term);
+    }
     
-    await resetTerms('candidatesByAuthor', byAuthor);
-    await resetTerms('candidatesByTitle', byTitle);
     logger.log('info', `Candidate terms reset done for ${base}/${recordId}`);
   }
 
@@ -55,7 +63,6 @@ function createCandidateService(connection: any): CandidateService {
         return {id, base, term};
       });
     };
-
 
     const byTitle = await loadFromTable('candidatesByTitle');
     const byAuthor = await loadFromTable('candidatesByAuthor');
@@ -82,20 +89,23 @@ function normalizeForGrouping(string) {
     .substr(0, 50);
 }
 
-function createGroupingByTitle(record) {
-  return _.chain(record.fields)
+function createGroupingTermsByTitle(record) {
+  const term = _.chain(record.fields)
     .filter(field => field.tag === '245')
     .flatMap(field => field.subfields.filter(subfield => _.includes(['a', 'b'], subfield.code)))
     .map(subfield => normalizeForGrouping(subfield.value))
     .join(' ').value();
+
+  return [term].filter(term => term.length > 1);
 }
 
-function createGroupingByAuthor(record) {
-  return _.chain(record.fields)
+function createGroupingTermsByAuthor(record) {
+  const term = _.chain(record.fields)
     .filter(field => _.includes(['100','110','111'], field.tag))
     .flatMap(field => field.subfields.filter(subfield => _.includes(['a', 'b'], subfield.code)))
     .map(subfield => normalizeForGrouping(subfield.value))
     .join(' ').value();
+  return [term].filter(term => term.length > 1);
 }
 
 module.exports = createCandidateService;
