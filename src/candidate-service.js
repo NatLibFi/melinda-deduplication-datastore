@@ -56,8 +56,14 @@ function createCandidateService(connection: any): CandidateService {
 
   async function loadCandidates(base, recordId) {
     const loadFromTable = async (tableName) => {
-      const candidatesBefore = await query(`select * from ${tableName} where base=? and id < ? order by term desc LIMIT ${CANDIDATE_CONTEXT_SIZE}`, [base, recordId]);
-      const candidatesAfter = await query(`select * from ${tableName} where base=? and id > ? order by term asc LIMIT ${CANDIDATE_CONTEXT_SIZE}`, [base, recordId]);
+      const queriedItem = await query(`select * from ${tableName} where base=? and id=?`, [base, recordId]);
+      if (queriedItem.length === 0) {
+        return [];
+      }
+      const queryTerm = _.get(queriedItem, '[0].term');
+      
+      const candidatesBefore = await query(`select * from ${tableName} where base=? and term < ? order by term desc LIMIT ${CANDIDATE_CONTEXT_SIZE}`, [base, queryTerm]);
+      const candidatesAfter = await query(`select * from ${tableName} where base=? and term > ? order by term asc LIMIT ${CANDIDATE_CONTEXT_SIZE}`, [base, queryTerm]);
       return _.concat(candidatesBefore, candidatesAfter).map(candidate => {
         const {id, base, term} = candidate;
         return {id, base, term};
