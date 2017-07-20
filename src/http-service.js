@@ -69,7 +69,7 @@ function createHTTPService(dataStoreService: DataStoreService) {
     logger.log('info', 'get request for candidates', req.params);
 
     const candidates = await dataStoreService.loadCandidates(base, recordId);
-    console.log(candidates.map(c => c.term));
+    console.log(candidates.map(c => c.second.term));
     return res.send(candidates);
   });
 

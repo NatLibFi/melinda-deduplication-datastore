@@ -65,15 +65,18 @@ function createCandidateService(connection: any): CandidateService {
       const candidatesBefore = await query(`select * from ${tableName} where base=? and term < ? order by term desc LIMIT ${CANDIDATE_CONTEXT_SIZE}`, [base, queryTerm]);
       const candidatesAfter = await query(`select * from ${tableName} where base=? and term > ? order by term asc LIMIT ${CANDIDATE_CONTEXT_SIZE}`, [base, queryTerm]);
       return _.concat(candidatesBefore, candidatesAfter).map(candidate => {
-        const {id, base, term} = candidate;
-        return {id, base, term};
+        
+        return {
+          first: {id: recordId, base: base, term: queryTerm},
+          second: {id: candidate.id, base: candidate.base, term: candidate.term}
+        };
       });
     };
 
     const byTitle = await loadFromTable('candidatesByTitle');
     const byAuthor = await loadFromTable('candidatesByAuthor');
     
-    return _.uniqBy(_.concat(byTitle, byAuthor), candidate => `${candidate.base}${candidate.id}`);
+    return _.uniqBy(_.concat(byTitle, byAuthor), candidate => `${candidate.second.base}${candidate.second.id}`);
     
   }
 
@@ -88,7 +91,7 @@ function createCandidateService(connection: any): CandidateService {
 
 function normalizeForGrouping(string) {
   return normalize(string.normalize('NFC'))
-    .replace(/[\][":;,.-/]/g, ' ')
+    .replace(/[\][":;,.-?'=+/]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase()
