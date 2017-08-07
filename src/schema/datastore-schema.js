@@ -8,8 +8,8 @@ insert into meta values (1);
 
 const recordTable = `
 create table if not exists record (
-  id varchar(60) NOT NULL PRIMARY KEY,
-  base varchar(20) NOT NULL PRIMARY KEY,
+  id varchar(60) NOT NULL,
+  base varchar(20) NOT NULL,
   groupingKeyA varchar(255),
   groupingKeyB varchar(255), 
   record text,
@@ -24,7 +24,7 @@ create table if not exists delta (
   id varchar(60) NOT NULL,
   base varchar(20) NOT NULL,
   delta text,
-  timestamp BIGINT NOT NULL,
+  timestamp BIGINT NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 `;
 

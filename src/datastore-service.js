@@ -15,6 +15,7 @@ const schemaVersion = 1;
 
 function createDataStoreService(connection: any): DataStoreService {
   const query = promisify(connection.query, connection);
+
   const candidateService = createCandidateService(connection);
   
   async function updateSchema() {
@@ -37,7 +38,12 @@ function createDataStoreService(connection: any): DataStoreService {
       if (databaseNotInitialized) {
         logger.log('info', 'Database has not been initialized');
         logger.log('info', 'Initializing database');
-        await utils.sequence(initialDatabaseSchema.map(sqlString => () => query(sqlString)));
+
+        for (const sqlString of initialDatabaseSchema) {
+          logger.log('info', sqlString);
+          await query(sqlString);
+        }
+
         logger.log('info', 'Database initialized');
         return;
       }
