@@ -32,12 +32,32 @@ function createHTTPService(dataStoreService: DataStoreService) {
       res.send(record);
     } catch(error) {
       if (error.name === 'NOT_FOUND') {
+        logger.log('info', 'record not found');
         return res.sendStatus(HttpStatus.NOT_FOUND);
       }
       logger.log('error', error);
       res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  });
 
+  app.get('/record/:base/:id/version/:timestamp', async function (req, res) {
+    const base = req.params.base;
+    const recordId = req.params.id;
+    const timestamp = parseInt(req.params.timestamp);
+    
+    logger.log('info', 'get request for specific version of record', req.params);
+
+    try {
+      const record = await dataStoreService.loadRecordByTimestamp(base, recordId, timestamp);
+      res.send(record);
+    } catch(error) {
+      if (error.name === 'NOT_FOUND') {
+        logger.log('info', 'record not found');
+        return res.sendStatus(HttpStatus.NOT_FOUND);
+      }
+      logger.log('error', error);
+      res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   });
 
   app.put('/record/:base/:id', async function (req, res) {
@@ -63,6 +83,24 @@ function createHTTPService(dataStoreService: DataStoreService) {
     }
   });
 
+  app.get('/record/:base/:id/history', async function (req, res) {
+    const base = req.params.base;
+    const recordId = req.params.id;
+    logger.log('info', 'get request of history for record', req.params);
+
+    try {
+      const history = await dataStoreService.loadRecordHistory(base, recordId);
+      res.send(history);
+    } catch(error) {
+      if (error.name === 'NOT_FOUND') {
+        logger.log('info', 'record not found');
+        return res.sendStatus(HttpStatus.NOT_FOUND);
+      }
+      logger.log('error', error);
+      res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+  });
   app.get('/candidates/:base/:id', async function (req, res) {
     const base = req.params.base;
     const recordId = req.params.id;

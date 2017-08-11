@@ -3,7 +3,7 @@ import type { DataStoreService } from './datastore-service.flow';
 const promisify = require('es6-promisify');
 const _ = require('lodash');
 const MarcRecord = require('marc-record-js');
-const jsdiff = require('diff');
+const DiffMatchPatch = require('diff-match-patch');
 
 const logger = require('melinda-deduplication-common/utils/logger');
 const utils = require('melinda-deduplication-common/utils/utils');
@@ -15,9 +15,9 @@ const schemaVersion = 1;
 
 function createDataStoreService(connection: any): DataStoreService {
   const query = promisify(connection.query, connection);
-
   const candidateService = createCandidateService(connection);
-  
+  const dmp = new DiffMatchPatch();
+
   async function updateSchema() {
 
     try {
@@ -66,6 +66,25 @@ function createDataStoreService(connection: any): DataStoreService {
     return record;    
   }
 
+  async function loadRecordByTimestamp(base, recordId, timestamp) {
+
+    const deltaRows = await query('SELECT delta from delta where base=? and id=? and timestamp >=? ORDER BY timestamp DESC', [base, recordId, timestamp]);
+    const recordRows = await query('SELECT record from record where base=? and id=?', [base, recordId]);
+    const current = _.get(recordRows, '[0].record');
+    if (current === undefined) {
+      throw NotFoundError();
+    }
+
+    const patches = deltaRows.map(row => _.get(row, 'delta')).map(deltaString => JSON.parse(deltaString));
+    const historicRecordString = patches.reduce((record, patch) => {
+      const [patchedRecord,] = dmp.patch_apply(patch, record);
+      return patchedRecord;
+    }, current);
+
+    const record = MarcRecord.fromString(historicRecordString);
+    return record;
+  }
+
   async function loadRecordMeta(base, recordId) {
     const results = await query('SELECT * from record where base=? and id=?', [base, recordId]);
     const meta = _.get(results, '[0]');
@@ -73,6 +92,22 @@ function createDataStoreService(connection: any): DataStoreService {
       throw NotFoundError();
     }
     return _.omit(meta, 'record');
+  }
+
+  async function loadRecordHistory(base, recordId) {
+    
+    const history = await query('SELECT timestamp, id, base from delta where base=? and id=? ORDER BY timestamp DESC', [base, recordId]);
+    
+    const current = await query('SELECT timestamp, id, base from record where base=? and id=?', [base, recordId]);
+
+    const all = _.concat(current, history);
+
+    if (all.length === 0) {
+      throw NotFoundError();
+    }
+
+    return all;
+    
   }
  
   async function saveRecord(base, recordId, record) {
@@ -83,12 +118,15 @@ function createDataStoreService(connection: any): DataStoreService {
       const currentRecord = await loadRecord(base, recordId);
       const currentRecordMeta = await loadRecordMeta(base, recordId);
 
-      const delta = jsdiff.diffLines(currentRecord.toString(), record.toString());
+      // Diff from incoming record -> current record
+      // The incoming record is saved, and diff can be used to construct the previous record
+      const diffs = dmp.diff_main(record.toString(), currentRecord.toString());
+      const patches = dmp.patch_make(diffs);
 
       const deltaRow = {
         id: recordId,
         base: base,
-        delta: JSON.stringify(delta),
+        delta: JSON.stringify(patches),
         timestamp: currentRecordMeta.timestamp
       };
 
@@ -133,7 +171,9 @@ function createDataStoreService(connection: any): DataStoreService {
     rebuildCandidateTerms,
     updateSchema,
     loadRecord,
+    loadRecordByTimestamp,
     saveRecord,
+    loadRecordHistory,
     loadCandidates: candidateService.loadCandidates
   };
 
