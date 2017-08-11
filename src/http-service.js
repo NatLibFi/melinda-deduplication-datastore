@@ -78,6 +78,10 @@ function createHTTPService(dataStoreService: DataStoreService) {
         logger.log('info', error.message);
         return res.sendStatus(HttpStatus.BAD_REQUEST);
       }
+      if (error.name === 'RecordIsOlderError') {
+        logger.log('info', 'Not saving the record since it is older than the currently stored record.');
+        return res.status(HttpStatus.BAD_REQUEST).send('Record is older than the currently stored record');
+      }
       logger.log('error', error);
       return res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
     }

@@ -7,6 +7,7 @@ const DiffMatchPatch = require('diff-match-patch');
 
 const logger = require('melinda-deduplication-common/utils/logger');
 const utils = require('melinda-deduplication-common/utils/utils');
+const RecordUtils = require('melinda-deduplication-common/utils/marc-record-utils');
 const initialDatabaseSchema = require('./schema/datastore-schema');
 const createCandidateService = require('./candidate-service');
 
@@ -118,6 +119,13 @@ function createDataStoreService(connection: any): DataStoreService {
       const currentRecord = await loadRecord(base, recordId);
       const currentRecordMeta = await loadRecordMeta(base, recordId);
 
+      const currentRecordLastModificationDate = RecordUtils.getLastModificationDate(currentRecord);
+      const incomingRecordLastModificationDate = RecordUtils.getLastModificationDate(record);
+
+      if (currentRecordLastModificationDate > incomingRecordLastModificationDate) {
+        throw RecordIsOlderError();
+      }
+
       // Diff from incoming record -> current record
       // The incoming record is saved, and diff can be used to construct the previous record
       const diffs = dmp.diff_main(record.toString(), currentRecord.toString());
@@ -189,6 +197,14 @@ function NotFoundError() {
   notFoundError.name = 'NOT_FOUND';
   throw notFoundError;
 }
+
+function RecordIsOlderError() {
+  const error = new Error();
+  error.name = 'RecordIsOlderError';
+  throw error;
+}
+
+
 
 module.exports = createDataStoreService;
 
