@@ -11,7 +11,7 @@ ACI_ARCH="amd64"
 ACI_RELEASE="xenial"
 ACI_NAME_DOMAIN="appc.cont-registry-kk.lib.helsinki.fi"
 ACI_NAME_GROUP="melinda"
-ACI_NAME="melinda-deduplication-datastore-ubuntu"
+ACI_NAME="deduplication-datastore-ubuntu"
 ACI_VERSION="1.0.0"
 
 rm -rf aci-build && mkdir aci-build &&
