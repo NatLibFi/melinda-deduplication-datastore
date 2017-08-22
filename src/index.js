@@ -31,7 +31,7 @@ async function start() {
 
   const onRetry = (error) => logger.log('warn', error);
   
-  const connection = await utils.waitAndRetry(() => getDBConnection(dbConnectionConfiguration), onRetry);
+  const connection = await utils.waitAndRetry(() => getDBConnection(dbConnectionConfiguration), onRetry, 10000);
   
   const dataStoreService = createDataStoreService(connection);
   await dataStoreService.updateSchema();
