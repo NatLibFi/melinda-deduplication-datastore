@@ -29,7 +29,7 @@ start().catch(error => logger.log('error', error.message, error));
 
 async function start() {
 
-  const onRetry = (error) => logger.log('warn', error);
+  const onRetry = (error) => logger.log('warn', `Failed to connect to database: ${error.message}. Retrying.`);
   
   const connection = await utils.waitAndRetry(() => getDBConnection(dbConnectionConfiguration), onRetry, 10000);
   
