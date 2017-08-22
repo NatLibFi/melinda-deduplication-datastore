@@ -38,6 +38,7 @@ $ACBUILD_CMD label add os $ACI_OS
 $ACBUILD_CMD label add arch $ACI_ARCH
 $ACBUILD_CMD label add release $ACI_RELEASE
 
+$ACBUILD_CMD set-working-directory /opt/melinda-deduplication-datastore/app
 $ACBUILD_CMD set-exec -- /bin/bash -c '/usr/bin/node index.js 2>&1 | tee -a /opt/melinda-deduplication-datastore/logs/melinda-deduplication-datastore.log'
 
 $ACBUILD_CMD mount add logs /opt/melinda-deduplication-datastore/logs
