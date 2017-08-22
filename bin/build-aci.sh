@@ -64,6 +64,8 @@ $ACBUILD_CMD run --engine $ACBUILD_ENGINE --working-dir /opt/melinda-deduplicati
 $ACBUILD_CMD run --engine $ACBUILD_ENGINE -- /bin/bash -c 'apt-get -y update && apt-get -y install tzdata'
 $ACBUILD_CMD run --engine $ACBUILD_ENGINE -- /bin/bash -c 'ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime'
 
+$ACBUILD_CMD port add http tcp 8080
+
 if [ $ACBUILD_ENGINE == 'chroot' ];then
   $ACBUILD_CMD run --engine chroot -- rm /etc/resolv.conf
 fi
