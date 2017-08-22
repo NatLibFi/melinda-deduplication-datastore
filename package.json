@@ -10,8 +10,8 @@
     "copy:main:packagejson": "cp package.json build",
     "copy:common:packagejson": "cp melinda-deduplication-common/package.json build/melinda-deduplication-common/package.json",
     "test": "npm run flow",
-    "test:unit": "mocha *.spec.js",
-    "test:watch": "mocha *.spec.js -w",
+    "test:unit": "mocha src/*.spec.js melinda-deduplication-common/**/*.spec.js",
+    "test:watch": "npm run test:unit -- -w",
     "flow": "flow",
     "dev": "concurrently --kill-others 'npm run build:main -- -w' 'npm run build:common -- -w' 'sleep 1 && nodemon -w build build/index.js'"
   },
@@ -34,12 +34,15 @@
     "babel-eslint": "^7.2.3",
     "babel-plugin-module-resolver": "^2.7.1",
     "babel-preset-flow": "^6.23.0",
+    "chai": "^4.1.1",
     "concurrently": "^3.5.0",
     "eslint": "^4.1.1",
     "eslint-import-resolver-babel-module": "^3.0.0",
     "eslint-plugin-flowtype": "^2.34.0",
     "eslint-plugin-import": "^2.6.0",
     "flow-bin": "^0.48.0",
-    "nodemon": "^1.11.0"
+    "mocha": "^3.5.0",
+    "nodemon": "^1.11.0",
+    "sinon": "^3.2.1"
   }
 }

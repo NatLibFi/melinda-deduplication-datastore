@@ -29,7 +29,7 @@ start().catch(error => logger.log('error', error.message, error));
 
 async function start() {
 
-  const connection = await getDBConnection(dbConnectionConfiguration);
+  const connection = await utils.waitAndRetry(() => getDBConnection(dbConnectionConfiguration));
 
   const dataStoreService = createDataStoreService(connection);
   await dataStoreService.updateSchema();
@@ -43,6 +43,7 @@ async function start() {
   logger.log('info', `HTTP Service listening on port ${DATASTORE_HTTP_PORT}`);
 
 }
+
 
 function getDBConnection(config) {
   return new Promise((resolve, reject) => {
