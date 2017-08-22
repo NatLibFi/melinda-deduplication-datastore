@@ -24,6 +24,7 @@
     "es6-promisify": "^5.0.0",
     "express": "^4.15.3",
     "http-status-codes": "^1.1.6",
+    "lodash": "^4.17.4",
     "marc-record-js": "^0.3.2",
     "mysql": "^2.13.0",
     "normalize-strings": "^1.1.0"
