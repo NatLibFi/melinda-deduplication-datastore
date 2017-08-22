@@ -29,8 +29,10 @@ start().catch(error => logger.log('error', error.message, error));
 
 async function start() {
 
-  const connection = await utils.waitAndRetry(() => getDBConnection(dbConnectionConfiguration));
-
+  const onRetry = (error) => logger.log('warn', error);
+  
+  const connection = await utils.waitAndRetry(() => getDBConnection(dbConnectionConfiguration), onRetry);
+  
   const dataStoreService = createDataStoreService(connection);
   await dataStoreService.updateSchema();
   if (REBUILD_CANDIDATE_TERMS) {
