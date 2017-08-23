@@ -25,14 +25,27 @@ const dbConnectionConfiguration = {
   database: DATASTORE_MYSQL_DATABASE
 };
 
-start().catch(error => logger.log('error', error.message, error));
+startApp();
 
-async function start() {
+function startApp() {
+  startDatastore().catch(error => logger.log('error', error.message, error));
+}
+
+async function startDatastore() {
 
   const onRetry = (error) => logger.log('warn', `Failed to connect to database: ${error.message}. Retrying.`);
   
   const connection = await utils.waitAndRetry(() => getDBConnection(dbConnectionConfiguration), onRetry, 10000);
-  
+  connection.on('error', (error) => {
+    if (error.code === 'PROTOCOL_CONNECTION_LOST') {
+      logger.log('warn', 'Connection to database lost. Reconnecting.');
+      httpService.close();
+      startApp();
+    } else {
+      logger.log('error', error.message, error);
+      process.exit(1);
+    }
+  });
   const dataStoreService = createDataStoreService(connection);
   await dataStoreService.updateSchema();
   if (REBUILD_CANDIDATE_TERMS) {
@@ -43,9 +56,8 @@ async function start() {
 
   await httpService.listen(DATASTORE_HTTP_PORT);
   logger.log('info', `HTTP Service listening on port ${DATASTORE_HTTP_PORT}`);
-
+  
 }
-
 
 function getDBConnection(config) {
   return new Promise((resolve, reject) => {

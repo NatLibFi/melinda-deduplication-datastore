@@ -11,7 +11,20 @@ const logger = require('melinda-deduplication-common/utils/logger');
 
 function createHTTPService(dataStoreService: DataStoreService) {
   const app = express();
-  const listen = promisify(app.listen, app);
+  let server;
+  const listen = (port: number) => {
+    return new Promise((resolve, reject) => {
+      server = app.listen(port, (err, ok) => {
+        if(err) {
+          return reject(err);
+        } else {
+          resolve(ok);
+        }
+      });
+    });
+  };
+  const close = () => server.close();
+
   app.use(bodyParser.json({ limit: '1000kb' }));
   app.use((error, req, res, next) => {
     if (error instanceof SyntaxError) {
@@ -126,7 +139,8 @@ function createHTTPService(dataStoreService: DataStoreService) {
   }
 
   return {
-    listen
+    listen,
+    close
   };
 }
 
