@@ -81,7 +81,7 @@ function createHTTPService(dataStoreService: DataStoreService) {
     try  {
       
       const record = parseRecord(req.body);
-      logger.log('info', `Record:\n${record.toString()}`);
+      debug(`Record:\n${record.toString()}`);
 
       await dataStoreService.saveRecord(base, recordId, record);
       res.sendStatus(HttpStatus.OK);
