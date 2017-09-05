@@ -111,8 +111,8 @@ function createDataStoreService(connection: any): DataStoreService {
     
   }
  
-  async function saveRecord(base, recordId, record) {
-    logger.log('info', `Saving ${base}/${recordId} to database`);
+  async function saveRecord(base, recordId, record, quiet=false) {
+    if (!quiet) logger.log('info', `Saving ${base}/${recordId} to database`);
 
     const now = Date.now();
     try {
@@ -169,9 +169,9 @@ function createDataStoreService(connection: any): DataStoreService {
         row.timestamp
       ]);
     
-    logger.log('info', `Record ${base}/${recordId} saved succesfully.`);
+    if (!quiet) logger.log('info', `Record ${base}/${recordId} saved succesfully.`);
 
-    await candidateService.update(base, recordId, record);
+    await candidateService.update(base, recordId, record, quiet);
     
   }
   
