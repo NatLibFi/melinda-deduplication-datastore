@@ -20,22 +20,42 @@ function createCandidateService(connection: any): CandidateService {
       await query(`delete from ${tableName}`);
     }
   
+    const countRow = await query('select count(id) as recordCount from record');
+    const recordCount = _.get(countRow, '[0].recordCount');
+    
     const allRecordsStream = connection.query('select id, base, record from record');
+    let current = 0;
+    let stepSize = Math.ceil(recordCount / 1000);
+
     allRecordsStream
       .on('error', function(err) { throw err; })
       .on('result', async function(row) {
-        connection.pause();
+        
+        current++;
+        if (current % stepSize === 0) {
+          const percent = Math.round(current / recordCount * 100 * 100) / 100;
+          logger.log('info', `${current}/${recordCount} (${percent}%)`);
+        }
         
         const record = MarcRecord.fromString(row.record);
-        await update(row.base, row.id, record);
-        connection.resume();
-        
+        try {
+          const quiet = true;
+          await update(row.base, row.id, record, quiet);
+        } catch(error) {
+          logger.log('error', error.message, error);
+        }
+       
+      })
+      .on('end', () => {
+        const percent = Math.round(current / recordCount * 100 * 100) / 100;
+        logger.log('info', `${current}/${recordCount} (${percent}%)`);
+        logger.log('into', 'Candidates rebuilt.');
       });
   }
 
-  async function update(base, recordId, record) {
-    logger.log('info', `Resetting candidate query terms for ${base}/${recordId}`);
-
+  async function update(base, recordId, record, quiet=false) {
+    if (!quiet) logger.log('info', `Resetting candidate query terms for ${base}/${recordId}`);
+    
     const resetTerms = async (tableName, terms) => {
       await query(`delete from ${tableName} where id=? and base=?`, [recordId, base]);
       await query(`insert into ${tableName} (id, base, term) values (?,?,?)`, [recordId, base, terms]);
@@ -51,7 +71,7 @@ function createCandidateService(connection: any): CandidateService {
       await resetTerms('candidatesByTitle', term);
     }
     
-    logger.log('info', `Candidate terms reset done for ${base}/${recordId}`);
+    if (!quiet) logger.log('info', `Candidate terms reset done for ${base}/${recordId}`);
   }
 
   async function remove(base, recordId) {
@@ -93,7 +113,6 @@ function createCandidateService(connection: any): CandidateService {
     rebuild
   };
 }
-
 
 function normalizeForGrouping(string) {
   return normalize(string.normalize('NFC'))
