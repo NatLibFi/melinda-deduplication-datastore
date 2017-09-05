@@ -12,6 +12,7 @@ const createHTTPService = require('./http-service');
 const DATASTORE_HTTP_PORT = utils.readEnvironmentVariable('DATASTORE_HTTP_PORT', 8080);
 
 const DATASTORE_MYSQL_HOST = utils.readEnvironmentVariable('DATASTORE_MYSQL_HOST');
+const DATASTORE_MYSQL_PORT = utils.readEnvironmentVariable('DATASTORE_MYSQL_PORT', 3306);
 const DATASTORE_MYSQL_USER = utils.readEnvironmentVariable('DATASTORE_MYSQL_USER');
 const DATASTORE_MYSQL_PASSWORD = utils.readEnvironmentVariable('DATASTORE_MYSQL_PASSWORD');
 const DATASTORE_MYSQL_DATABASE = utils.readEnvironmentVariable('DATASTORE_MYSQL_DATABASE');
@@ -22,7 +23,8 @@ const dbConnectionConfiguration = {
   host: DATASTORE_MYSQL_HOST,
   user: DATASTORE_MYSQL_USER,
   password: DATASTORE_MYSQL_PASSWORD,
-  database: DATASTORE_MYSQL_DATABASE
+  database: DATASTORE_MYSQL_DATABASE,
+  port: DATASTORE_MYSQL_PORT
 };
 
 startApp();
