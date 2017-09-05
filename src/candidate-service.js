@@ -15,16 +15,22 @@ function createCandidateService(connection: any): CandidateService {
   const query = promisify(connection.query, connection);
 
   async function rebuild() {
-    const allRecords = await query('select id, base, record from record');
   
     for (const tableName of TABLE_NAMES) {
       await query(`delete from ${tableName}`);
     }
   
-    for (const row of allRecords) {
-      const record = MarcRecord.fromString(row.record);
-      await update(row.base, row.id, record);
-    }
+    const allRecordsStream = connection.query('select id, base, record from record');
+    allRecordsStream
+      .on('error', function(err) { throw err; })
+      .on('result', async function(row) {
+        connection.pause();
+        
+        const record = MarcRecord.fromString(row.record);
+        await update(row.base, row.id, record);
+        connection.resume();
+        
+      });
   }
 
   async function update(base, recordId, record) {
