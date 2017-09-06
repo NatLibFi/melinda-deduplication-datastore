@@ -200,9 +200,14 @@ function createDataStoreService(connection: any): DataStoreService {
 
 }
 
-// TODO
 function parseParentId(record) {
-  return '';
+  return _.chain(record.fields)
+    .filter(field => field.tag === '773')
+    .flatMap(field => field.subfields)
+    .filter(subfield => subfield.code === 'w')
+    .map('value')
+    .head()
+    .value();
 }
 
 function NotFoundError() {
