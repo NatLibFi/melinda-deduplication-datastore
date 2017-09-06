@@ -5,6 +5,7 @@ const normalize = require('normalize-strings');
 const _ = require('lodash');
 const MarcRecord = require('marc-record-js');
 
+const RecordUtils = require('melinda-deduplication-common/utils/record-utils');
 const logger = require('melinda-deduplication-common/utils/logger');
 const CANDIDATE_CONTEXT_SIZE = 4;
 
@@ -58,7 +59,10 @@ function createCandidateService(connection: any): CandidateService {
     
     const resetTerms = async (tableName, terms) => {
       await query(`delete from ${tableName} where id=? and base=?`, [recordId, base]);
-      await query(`insert into ${tableName} (id, base, term) values (?,?,?)`, [recordId, base, terms]);
+      
+      if (!RecordUtils.isDeleted(record)) {
+        await query(`insert into ${tableName} (id, base, term) values (?,?,?)`, [recordId, base, terms]);
+      }
     };
 
     const termsByAuthor = createGroupingTermsByAuthor(record);
