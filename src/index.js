@@ -48,6 +48,7 @@ async function startDatastore() {
       process.exit(1);
     }
   });
+
   const dataStoreService = createDataStoreService(connection);
   await dataStoreService.updateSchema();
   if (REBUILD_CANDIDATE_TERMS) {
