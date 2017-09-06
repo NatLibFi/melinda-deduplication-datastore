@@ -6,13 +6,12 @@ const MarcRecord = require('marc-record-js');
 const DiffMatchPatch = require('diff-match-patch');
 
 const logger = require('melinda-deduplication-common/utils/logger');
-const utils = require('melinda-deduplication-common/utils/utils');
 const RecordUtils = require('melinda-deduplication-common/utils/marc-record-utils');
 const initialDatabaseSchema = require('./schema/datastore-schema');
 const createCandidateService = require('./candidate-service');
 
-const migrations = '???';
-const schemaVersion = 1;
+const getMigrationCommands = require('./schema/migrations');
+const SCHEMA_VERSION = 2;
 
 function createDataStoreService(connection: any): DataStoreService {
   const query = promisify(connection.query, connection);
@@ -23,16 +22,23 @@ function createDataStoreService(connection: any): DataStoreService {
 
     try {
 
-      const dbVersionRow = await query('select version from meta').then(_.head);
-      const dbVersion = dbVersionRow.version;
+      const dbVersion = await getDatabaseVersion();
+      
       logger.log('info', `Database version ${dbVersion}`);
-      logger.log('info', `Schema version ${schemaVersion}`);
-      if (schemaVersion !== dbVersion) {
-        logger.log('info', `Updating database version from ${dbVersion} to ${schemaVersion}`);
-        throw new Error('Database migration for versions not implemented');
-        // migrate!
-        // check if schema update required
-        // run migration
+      logger.log('info', `Schema version ${SCHEMA_VERSION}`);
+      if (SCHEMA_VERSION !== dbVersion) {
+        logger.log('info', `Updating database version from ${dbVersion} to ${SCHEMA_VERSION}`);
+
+        const migrations = getMigrationCommands({from: dbVersion, to: SCHEMA_VERSION});
+        for (const sqlString of migrations) {
+          logger.log('info', sqlString);
+          await query(sqlString);
+        }
+        await query('update meta set version=?', [SCHEMA_VERSION]);
+        const dbVersionAfterMigration = await getDatabaseVersion();
+        
+        logger.log('info', `Database updated from version ${dbVersion} to ${dbVersionAfterMigration}`);
+        
       }
     } catch(error) {
       const databaseNotInitialized = error.code === 'ER_NO_SUCH_TABLE';
@@ -46,10 +52,17 @@ function createDataStoreService(connection: any): DataStoreService {
         }
 
         logger.log('info', 'Database initialized');
-        return;
+
+        return updateSchema();
       }
       throw error;
     }
+  }
+
+  async function getDatabaseVersion() {
+    const dbVersionRow = await query('select version from meta').then(_.head);
+    const dbVersion = dbVersionRow.version;
+    return dbVersion;
   }
 
   async function rebuildCandidateTerms() {
