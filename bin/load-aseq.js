@@ -124,7 +124,7 @@ async function run(base, filename) {
         const rounded = Math.round(averageTime * 1000) / 1000;
         const perSecond = Math.round(1000/rounded * 10) / 10;
         const now = new Date().toString();
-        console.log(`${now} Saved record ${base}/${recordId} (Saved count: ${count}) Average time per record ${rounded} ms (${perSecond} per second)`);
+        console.log(`${now} Saved record ${base}/${recordId} in ${delta} ms (Saved count: ${count}) Average time per record ${rounded} ms (${perSecond} per second)`);
       }
 
       await markRecordAsSaved(recordId);
