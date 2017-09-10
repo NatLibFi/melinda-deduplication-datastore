@@ -16,6 +16,8 @@ if (!filename) {
   throw new Error('Filename not defined');
 }
 
+const SAVED_RECORDS_STORE = _.get(process.env, 'SAVED_RECORDS_STORE', '.load-aseq_saved-records-store.json');
+
 const DATASTORE_MYSQL_HOST = _.get(process.env, 'DATASTORE_MYSQL_HOST');
 const DATASTORE_MYSQL_PORT = _.get(process.env, 'DATASTORE_MYSQL_PORT', '3306');
 const DATASTORE_MYSQL_USER = _.get(process.env, 'DATASTORE_MYSQL_USER');
@@ -36,6 +38,8 @@ let averageTime = 0;
 run(base, filename).catch(error => console.error(error));
 
 async function run(base, filename) {
+
+  const savedRecords = loadSavedRecords();
   
   console.log('adding aseq records from %s into %s', filename, base);
   
@@ -102,6 +106,9 @@ async function run(base, filename) {
     if (recordId === undefined) {
       throw new Error('Cannot add records without 001 field.');
     }
+    if (recordHasBeenSavedAlready(recordId)) {
+      return;
+    }
     
     try {
       const start = Utils.hrtimeToMs(process.hrtime());
@@ -118,6 +125,9 @@ async function run(base, filename) {
         const perSecond = Math.round(1000/rounded * 10) / 10;
         console.log(`Saved record ${base}/${recordId} (Saved count: ${count}) Average time per record ${rounded} ms (${perSecond} per second)`);
       }
+
+      await markRecordAsSaved(recordId);
+
     } catch(error) {
       console.log(`Error saving record ${base}/${recordId}`);
       console.error(error);
@@ -125,7 +135,25 @@ async function run(base, filename) {
 
   }
 
+  function recordHasBeenSavedAlready(recordId) {
+    return savedRecords[recordId];
+  }
+
+  function markRecordAsSaved(recordId) {
+    savedRecords[recordId] = true;
+    fs.writeFileSync(SAVED_RECORDS_STORE, JSON.stringify(savedRecords), 'utf8');
+  }
+
+  function loadSavedRecords() {
+    try {
+      const data = fs.readFileSync(SAVED_RECORDS_STORE, 'utf8');
+      return JSON.parse(data);
+    } catch(error) {
+      return {};
+    }
+  }
 }
+
 
 function getDBConnection(config) {
   return new Promise((resolve, reject) => {
