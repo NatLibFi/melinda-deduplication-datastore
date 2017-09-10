@@ -104,7 +104,7 @@ async function run(base, filename) {
 
     const recordId = _.get(record.fields.find(field => field.tag === '001'), 'value');
     if (recordId === undefined) {
-      throw new Error('Cannot add records without 001 field.');
+      return;
     }
     if (recordHasBeenSavedAlready(recordId)) {
       return;
@@ -123,7 +123,7 @@ async function run(base, filename) {
       if (count % 100 === 0) {
         const rounded = Math.round(averageTime * 1000) / 1000;
         const perSecond = Math.round(1000/rounded * 10) / 10;
-        console.log(`Saved record ${base}/${recordId} (Saved count: ${count}) Average time per record ${rounded} ms (${perSecond} per second)`);
+        console.log(`${new Date.toString()} Saved record ${base}/${recordId} (Saved count: ${count}) Average time per record ${rounded} ms (${perSecond} per second)`);
       }
 
       await markRecordAsSaved(recordId);
