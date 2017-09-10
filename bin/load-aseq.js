@@ -16,7 +16,7 @@ if (!filename) {
   throw new Error('Filename not defined');
 }
 
-const SAVED_RECORDS_STORE = _.get(process.env, 'SAVED_RECORDS_STORE', '.load-aseq_saved-records-store.json');
+const SAVED_RECORDS_STORE = _.get(process.env, 'SAVED_RECORDS_STORE', '.load-aseq_saved-records-store');
 
 const DATASTORE_MYSQL_HOST = _.get(process.env, 'DATASTORE_MYSQL_HOST');
 const DATASTORE_MYSQL_PORT = _.get(process.env, 'DATASTORE_MYSQL_PORT', '3306');
@@ -142,13 +142,16 @@ async function run(base, filename) {
 
   function markRecordAsSaved(recordId) {
     savedRecords[recordId] = true;
-    fs.writeFileSync(SAVED_RECORDS_STORE, JSON.stringify(savedRecords), 'utf8');
+    fs.appendFileSync(SAVED_RECORDS_STORE, `${recordId}\n`, 'utf8');
   }
 
   function loadSavedRecords() {
     try {
       const data = fs.readFileSync(SAVED_RECORDS_STORE, 'utf8');
-      return JSON.parse(data);
+      return data.split('\n').reduce((saved, id) => {
+        saved[id] = true;
+        return saved;
+      }, {});
     } catch(error) {
       return {};
     }
