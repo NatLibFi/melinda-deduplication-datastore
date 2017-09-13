@@ -1,5 +1,6 @@
 // @flow
 import type { DataStoreService } from './datastore-service.flow';
+
 const promisify = require('es6-promisify');
 const _ = require('lodash');
 const MarcRecord = require('marc-record-js');
@@ -13,9 +14,18 @@ const createCandidateService = require('./candidate-service');
 const getMigrationCommands = require('./schema/migrations');
 const SCHEMA_VERSION = 3;
 
-function createDataStoreService(connection: any): DataStoreService {
-  const query = promisify(connection.query, connection);
-  const candidateService = createCandidateService(connection);
+function createDataStoreService(connectionPool: any): DataStoreService {
+  const getConnectionFromPool = promisify(connectionPool.getConnection, connectionPool);
+
+  const query = async (...args) => {
+    const connection = await getConnectionFromPool();
+    const querySql = promisify(connection.query, connection);
+    const result = await querySql(...args);
+    connection.release();
+    return result;
+  };
+
+  const candidateService = createCandidateService(connectionPool);
   const dmp = new DiffMatchPatch();
 
   async function updateSchema() {
@@ -60,6 +70,7 @@ function createDataStoreService(connection: any): DataStoreService {
   }
 
   async function getDatabaseVersion() {
+ 
     const dbVersionRow = await query('select version from meta').then(_.head);
     const dbVersion = dbVersionRow.version;
     return dbVersion;
@@ -70,7 +81,7 @@ function createDataStoreService(connection: any): DataStoreService {
   }
 
   async function loadRecord(base, recordId) {
-
+  
     const results = await query('SELECT record from record where base=? and id=?', [base, recordId]);
     const recordString = _.get(results, '[0].record');
     if (recordString === undefined) {
@@ -100,6 +111,7 @@ function createDataStoreService(connection: any): DataStoreService {
   }
 
   async function loadRecordMeta(base, recordId) {
+
     const results = await query('SELECT * from record where base=? and id=?', [base, recordId]);
     const meta = _.get(results, '[0]');
     if (meta === undefined) {
@@ -109,7 +121,7 @@ function createDataStoreService(connection: any): DataStoreService {
   }
 
   async function loadRecordHistory(base, recordId) {
-    
+ 
     const history = await query('SELECT timestamp, id, base from delta where base=? and id=? ORDER BY timestamp DESC', [base, recordId]);
     
     const current = await query('SELECT timestamp, id, base from record where base=? and id=?', [base, recordId]);
@@ -125,6 +137,7 @@ function createDataStoreService(connection: any): DataStoreService {
   }
  
   async function saveRecord(base, recordId, record, quiet=false) {
+ 
     if (!quiet) logger.log('info', `Saving ${base}/${recordId} to database`);
 
     const now = Date.now();
@@ -221,8 +234,6 @@ function RecordIsOlderError() {
   error.name = 'RecordIsOlderError';
   throw error;
 }
-
-
 
 module.exports = createDataStoreService;
 

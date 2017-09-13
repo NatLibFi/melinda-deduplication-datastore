@@ -11,12 +11,19 @@ const CANDIDATE_CONTEXT_SIZE = 4;
 
 const TABLE_NAMES = ['candidatesByAuthor', 'candidatesByTitle'];
 
-function createCandidateService(connection: any): CandidateService {
-
-  const query = promisify(connection.query, connection);
+function createCandidateService(connectionPool: any): CandidateService {
+  const getConnectionFromPool = promisify(connectionPool.getConnection, connectionPool);
+  
+  const query = async (...args) => {
+    const connection = await getConnectionFromPool();
+    const querySql = promisify(connection.query, connection);
+    const result = await querySql(...args);
+    connection.release();
+    return result;
+  };
 
   async function rebuild() {
-  
+ 
     for (const tableName of TABLE_NAMES) {
       await query(`delete from ${tableName}`);
     }
@@ -24,12 +31,16 @@ function createCandidateService(connection: any): CandidateService {
     const countRow = await query('select count(id) as recordCount from record');
     const recordCount = _.get(countRow, '[0].recordCount');
     
+    const connection = await getConnectionFromPool();
     const allRecordsStream = connection.query('select id, base, record from record');
     let current = 0;
     let stepSize = Math.ceil(recordCount / 1000);
 
     allRecordsStream
-      .on('error', function(err) { throw err; })
+      .on('error', function(err) { 
+        connection.release();
+        throw err;
+      })
       .on('result', async function(row) {
         
         current++;
@@ -51,10 +62,12 @@ function createCandidateService(connection: any): CandidateService {
         const percent = Math.round(current / recordCount * 100 * 100) / 100;
         logger.log('info', `${current}/${recordCount} (${percent}%)`);
         logger.log('into', 'Candidates rebuilt.');
+        connection.release();
       });
   }
 
   async function update(base, recordId, record, quiet=false) {
+   
     if (!quiet) logger.log('info', `Resetting candidate query terms for ${base}/${recordId}`);
     
     const resetTerms = async (tableName, terms) => {
@@ -79,12 +92,14 @@ function createCandidateService(connection: any): CandidateService {
   }
 
   async function remove(base, recordId) {
+   
     for (const tableName of TABLE_NAMES) {
       await query(`delete from ${tableName} where id=? and base=?`, [recordId, base]);
     }
   }
 
   async function loadCandidates(base, recordId) {
+  
     const loadFromTable = async (tableName) => {
       const queriedItem = await query(`select * from ${tableName} where base=? and id=?`, [base, recordId]);
       if (queriedItem.length === 0) {
