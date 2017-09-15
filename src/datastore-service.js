@@ -7,7 +7,7 @@ const MarcRecord = require('marc-record-js');
 const DiffMatchPatch = require('diff-match-patch');
 
 const logger = require('melinda-deduplication-common/utils/logger');
-const RecordUtils = require('melinda-deduplication-common/utils/marc-record-utils');
+const RecordUtils = require('melinda-deduplication-common/utils/record-utils');
 const initialDatabaseSchema = require('./schema/datastore-schema');
 const createCandidateService = require('./candidate-service');
 
@@ -176,7 +176,7 @@ function createDataStoreService(connectionPool: any): DataStoreService {
       id: recordId,
       base: base,
       record: record.toString(),
-      parentId: parseParentId(record),
+      parentId: RecordUtils.parseParentId(record),
       timestamp: now
     };
     
@@ -211,16 +211,6 @@ function createDataStoreService(connectionPool: any): DataStoreService {
     loadCandidates: candidateService.loadCandidates
   };
 
-}
-
-function parseParentId(record) {
-  return _.chain(record.fields)
-    .filter(field => field.tag === '773')
-    .flatMap(field => field.subfields)
-    .filter(subfield => subfield.code === 'w')
-    .map('value')
-    .head()
-    .value();
 }
 
 function NotFoundError() {
