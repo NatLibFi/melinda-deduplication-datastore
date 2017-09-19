@@ -73,8 +73,11 @@ function createCandidateService(connectionPool: any): CandidateService {
     const resetTerms = async (tableName, terms) => {
       await query(`delete from ${tableName} where id=? and base=?`, [recordId, base]);
       
+
       if (!RecordUtils.isDeleted(record) && !RecordUtils.isComponentRecord(record)) {
         await query(`insert into ${tableName} (id, base, term) values (?,?,?)`, [recordId, base, terms]);
+      } else {
+        logger.log('info', `Not adding record to ${tableName}-index indices: record is either deleted or a component record.`);
       }
     };
 
