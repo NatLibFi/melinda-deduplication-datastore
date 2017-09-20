@@ -24,7 +24,7 @@ const DATASTORE_MYSQL_USER = _.get(process.env, 'DATASTORE_MYSQL_USER');
 const DATASTORE_MYSQL_PASSWORD = _.get(process.env, 'DATASTORE_MYSQL_PASSWORD');
 const DATASTORE_MYSQL_DATABASE = _.get(process.env, 'DATASTORE_MYSQL_DATABASE');
 
-const dbConnectionConfiguration = {
+const dbConnectionPoolConfiguration = {
   host: DATASTORE_MYSQL_HOST,
   user: DATASTORE_MYSQL_USER,
   password: DATASTORE_MYSQL_PASSWORD,
@@ -43,8 +43,11 @@ async function run(base, filename) {
   
   console.log('adding aseq records from %s into %s', filename, base);
   
-  const connection = await getDBConnection(dbConnectionConfiguration);
-  const dataStoreService = createDataStoreService(connection);
+  const connectionPool = await getDBConnectionPool(dbConnectionPoolConfiguration);
+  
+  await ensureDatabaseIsOK(connectionPool);
+
+  const dataStoreService = createDataStoreService(connectionPool);
   
   const fileStream = fs.createReadStream(filename);
   const reader = new Serializers.AlephSequential.Reader(fileStream);
@@ -158,16 +161,22 @@ async function run(base, filename) {
   }
 }
 
-
-function getDBConnection(config) {
+function ensureDatabaseIsOK(connectionPool) {
   return new Promise((resolve, reject) => {
-    const connection = mysql.createConnection(config);
-
-    connection.connect((err) => {
+    connectionPool.getConnection((err, connection) => {
       if (err) {
-        return reject(err);
+        reject(err);
+      } else {
+        connection.release();
+        resolve();
       }
-      resolve(connection);
     });
+  });
+}
+
+function getDBConnectionPool(config) {
+  return new Promise((resolve) => {
+    const connectionPool = mysql.createPool(config);
+    resolve(connectionPool);
   });
 }
