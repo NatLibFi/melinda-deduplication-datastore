@@ -12,7 +12,7 @@ const initialDatabaseSchema = require('./schema/datastore-schema');
 const createCandidateService = require('./candidate-service');
 
 const getMigrationCommands = require('./schema/migrations');
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 function createDataStoreService(connectionPool: any): DataStoreService {
   const getConnectionFromPool = promisify(connectionPool.getConnection, connectionPool);
