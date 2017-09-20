@@ -19,7 +19,7 @@ const DATASTORE_MYSQL_DATABASE = utils.readEnvironmentVariable('DATASTORE_MYSQL_
 
 const REBUILD_CANDIDATE_TERMS =  utils.readEnvironmentVariable('REBUILD_CANDIDATE_TERMS', false);
 
-const dbConnectionConfiguration = {
+const dbConnectionPoolConfiguration = {
   host: DATASTORE_MYSQL_HOST,
   user: DATASTORE_MYSQL_USER,
   password: DATASTORE_MYSQL_PASSWORD,
@@ -37,19 +37,13 @@ async function startDatastore() {
 
   const onRetry = (error) => logger.log('warn', `Failed to connect to database: ${error.message}. Retrying.`);
   
-  const connection = await utils.waitAndRetry(() => getDBConnection(dbConnectionConfiguration), onRetry, 10000);
-  connection.on('error', (error) => {
-    if (error.code === 'PROTOCOL_CONNECTION_LOST') {
-      logger.log('warn', 'Connection to database lost. Reconnecting.');
-      httpService.close();
-      startApp();
-    } else {
-      logger.log('error', error.message, error);
-      process.exit(1);
-    }
-  });
+  const connectionPool = await utils.waitAndRetry(() => getDBConnectionPool(dbConnectionPoolConfiguration), onRetry, 10000);
+  
+  await utils.waitAndRetry(() => ensureDatabaseIsOK(connectionPool), onRetry, 10000);
+  logger.log('info', `Database connection ready: ${DATASTORE_MYSQL_HOST}:${DATASTORE_MYSQL_PORT}/${DATASTORE_MYSQL_DATABASE}`);
+  
 
-  const dataStoreService = createDataStoreService(connection);
+  const dataStoreService = createDataStoreService(connectionPool);
   await dataStoreService.updateSchema();
   if (REBUILD_CANDIDATE_TERMS) {
     await dataStoreService.rebuildCandidateTerms();
@@ -62,15 +56,22 @@ async function startDatastore() {
   
 }
 
-function getDBConnection(config) {
+function ensureDatabaseIsOK(connectionPool) {
   return new Promise((resolve, reject) => {
-    const connection = mysql.createConnection(config);
-
-    connection.connect((err) => {
+    connectionPool.getConnection((err, connection) => {
       if (err) {
-        return reject(err);
+        reject(err);
+      } else {
+        connection.release();
+        resolve();
       }
-      resolve(connection);
     });
+  });
+}
+
+function getDBConnectionPool(config) {
+  return new Promise((resolve) => {
+    const connectionPool = mysql.createPool(config);
+    resolve(connectionPool);
   });
 }
