@@ -5,6 +5,7 @@ const promisify = require('es6-promisify');
 const _ = require('lodash');
 const MarcRecord = require('marc-record-js');
 const DiffMatchPatch = require('diff-match-patch');
+const moment = require('moment');
 
 const logger = require('melinda-deduplication-common/utils/logger');
 const RecordUtils = require('melinda-deduplication-common/utils/record-utils');
@@ -12,7 +13,7 @@ const initialDatabaseSchema = require('./schema/datastore-schema');
 const createCandidateService = require('./candidate-service');
 
 const getMigrationCommands = require('./schema/migrations');
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 function createDataStoreService(connectionPool: any): DataStoreService {
   const getConnectionFromPool = promisify(connectionPool.getConnection, connectionPool);
@@ -177,22 +178,25 @@ function createDataStoreService(connectionPool: any): DataStoreService {
       base: base,
       record: record.toString(),
       parentId: RecordUtils.parseParentId(record),
-      timestamp: now
+      timestamp: now,
+      recordTimestamp: moment(record.get(/^005$/).shift().value, 'YYYYMMDDHHmmssSS').format('YYYY-MM-DDTHH:mm:ss.SS')
     };
     
     await query(`
-      insert into record (id, base, record, parentId, timestamp) 
-        values (?,?,?,?,?) 
+      insert into record (id, base, record, parentId, timestamp, recordTimestamp)
+        values (?,?,?,?,?,?)
       ON DUPLICATE KEY UPDATE 
         record=values(record), 
         parentId=values(parentId), 
-        timestamp=values(timestamp)`, 
+        timestamp=values(timestamp),
+        recordTimestamp=values(recordTimestamp)`,
       [
         row.id, 
         row.base, 
         row.record, 
         row.parentId, 
-        row.timestamp
+        row.timestamp,
+        row.recordTimestamp
       ]);
     
     if (!quiet) logger.log('info', `Record ${base}/${recordId} saved succesfully.`);

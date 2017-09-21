@@ -28,7 +28,8 @@
     "lodash": "^4.17.4",
     "marc-record-js": "^0.3.2",
     "mysql": "^2.13.0",
-    "normalize-strings": "^1.1.0"
+    "normalize-strings": "^1.1.0",
+    "moment": "^2.18.1"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
