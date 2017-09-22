@@ -179,7 +179,7 @@ function createDataStoreService(connectionPool: any): DataStoreService {
       record: record.toString(),
       parentId: RecordUtils.parseParentId(record),
       timestamp: now,
-      recordTimestamp: moment(record.get(/^005$/).shift().value, 'YYYYMMDDHHmmssSS').format('YYYY-MM-DDTHH:mm:ss.SS')
+      recordTimestamp: moment(_.chain(record.get(/^005$/)).shift().value, 'YYYYMMDDHHmmssSS').format('YYYY-MM-DDTHH:mm:ss.SS')
     };
     
     await query(`
