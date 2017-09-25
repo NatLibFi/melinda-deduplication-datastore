@@ -15,7 +15,6 @@ create table if not exists record (
   record text,
   parentId varchar(60),
   timestamp BIGINT NOT NULL,
-  recordTimestamp DATETIME NOT NULL,
   PRIMARY KEY (id, base)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 `;
