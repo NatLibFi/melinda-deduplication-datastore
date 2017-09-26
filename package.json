@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
+    "lint": "npm run lint:main && npm run lint:common",
+    "lint:main": "eslint src",
+    "lint:common": "eslint melinda-deduplication-common",
     "postinstall": "cd melinda-deduplication-common && npm install",
     "build": "npm run build:main && npm run build:common && npm run copy:main:packagejson && npm run copy:common:packagejson && npm run copy:migrations",
     "build:main": "cd src && babel . -d ../build/",
