@@ -101,7 +101,7 @@ function createCandidateService(connectionPool: any): CandidateService {
     }
   }
 
-  async function loadCandidates(base, recordId) {
+  async function loadCandidates(base, recordId, requestOnlyHalf=false) {
   
     const loadFromTable = async (tableName) => {
       const queriedItem = await query(`select * from ${tableName} where base=? and id=?`, [base, recordId]);
@@ -110,10 +110,17 @@ function createCandidateService(connectionPool: any): CandidateService {
       }
       const queryTerm = _.get(queriedItem, '[0].term');
       
+      let candidates;
       const candidatesBefore = await query(`select * from ${tableName} where base=? and term <= ? and id != ? order by term desc LIMIT ${CANDIDATE_CONTEXT_SIZE}`, [base, queryTerm, recordId]);
-      const candidatesAfter = await query(`select * from ${tableName} where base=? and term >= ? and id != ? order by term asc LIMIT ${CANDIDATE_CONTEXT_SIZE}`, [base, queryTerm, recordId]);
-      return _.concat(candidatesBefore, candidatesAfter).map(candidate => {
-        
+
+      if (!requestOnlyHalf) {
+        const candidatesAfter = await query(`select * from ${tableName} where base=? and term >= ? and id != ? order by term asc LIMIT ${CANDIDATE_CONTEXT_SIZE}`, [base, queryTerm, recordId]);
+        candidates = _.concat(candidatesBefore, candidatesAfter);
+      } else {
+        candidates = candidatesBefore;
+      }
+      
+      return candidates.map(candidate => { 
         return {
           first: {id: recordId, base: base, term: queryTerm},
           second: {id: candidate.id, base: candidate.base, term: candidate.term}

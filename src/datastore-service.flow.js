@@ -8,6 +8,6 @@ export type DataStoreService = {
     loadRecord: (base: string, recordId: string) => Promise<MarcRecord>,
     loadRecordByTimestamp: (base: string, recordId: string, timestamp: number) => Promise<MarcRecord>,
     loadRecordHistory: (base: string, recordId: string) => Promise<Array<any>>,
-    loadCandidates: (base: string, recordId: string) => Promise<Array<DuplicateCandidate>>,
+    loadCandidates: (base: string, recordId: string, requestOnlyHalf?: boolean) => Promise<Array<DuplicateCandidate>>,
     rebuildCandidateTerms: () => Promise<any>
 };

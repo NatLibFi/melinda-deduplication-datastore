@@ -121,9 +121,10 @@ function createHTTPService(dataStoreService: DataStoreService) {
   app.get('/candidates/:base/:id', async function (req, res) {
     const base = req.params.base;
     const recordId = req.params.id;
-    logger.log('info', 'get request for candidates', req.params);
+    const requestOnlyHalf = req.query.half;
+    logger.log('info', 'get request for candidates', req.params, req.query);
 
-    const candidates = await dataStoreService.loadCandidates(base, recordId);
+    const candidates = await dataStoreService.loadCandidates(base, recordId, requestOnlyHalf);
     return res.send(candidates);
   });
 

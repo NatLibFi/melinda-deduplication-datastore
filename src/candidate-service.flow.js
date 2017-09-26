@@ -6,5 +6,5 @@ export type CandidateService = {
   rebuild: () => Promise<any>,
   update: (base: string, recordId: string, record: MarcRecord, quiet: boolean) => Promise<any>,
   remove: (base: string, recordId: string) => Promise<any>,
-  loadCandidates: (base: string, recordId: string) => Promise<Array<DuplicateCandidate>>
+  loadCandidates: (base: string, recordId: string, requestOnlyHalf?: boolean) => Promise<Array<DuplicateCandidate>>
 };
