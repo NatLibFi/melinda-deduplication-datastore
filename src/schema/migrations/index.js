@@ -33,8 +33,16 @@ function getMigrationFunctions({from, to}) {
   return () => {};
 }
 
-function migrateFrom5to6(query, connectionPool, logger) {
+function migrateFrom5to6(connectionPool, logger) {
   const getConnectionFromPool = promisify(connectionPool.getConnection, connectionPool);
+  
+  const query = async (...args) => {
+    const connection = await getConnectionFromPool();
+    const querySql = promisify(connection.query, connection);
+    const result = await querySql(...args);
+    connection.release();
+    return result;
+  };
 
   return new Promise(async (resolve, reject) => {
 
@@ -51,8 +59,10 @@ function migrateFrom5to6(query, connectionPool, logger) {
         connection.release();
         return reject(err);
       })
-      .on('result', async function(row) {
+      .on('result', function(row) {
         
+        connection.pause();
+
         current++;
         if (current % stepSize === 0) {
           const percent = Math.round(current / recordCount * 100 * 100) / 100;
@@ -61,12 +71,15 @@ function migrateFrom5to6(query, connectionPool, logger) {
         
         const record = MarcRecord.fromString(row.record);
         const recordTimestamp = moment(RecordUtils.getLastModificationDate(record)).format('YYYY-MM-DDTHH:mm:ss.SS');
-        try {
-          await query('update record set recordTimestamp=? where base=? and id=?', [recordTimestamp, row.base, row.id]);
-        } catch(error) {
-          logger.log('error', error.message, error);
-        }
-      
+
+        query('update record set recordTimestamp=? where base=? and id=?', [recordTimestamp, row.base, row.id])
+          .then(() => {
+            connection.resume();
+          }).catch(error => {
+            logger.log('error', error.message, error);
+            connection.resume();
+          });
+        
       })
       .on('end', () => {
         const percent = Math.round(current / recordCount * 100 * 100) / 100;

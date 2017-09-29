@@ -48,7 +48,7 @@ function createDataStoreService(connectionPool: any): DataStoreService {
             await query(sqlString);
           }
 
-          await migration.migrationFn(query, connectionPool, logger);
+          await migration.migrationFn(connectionPool, logger);
 
         }
         await query('update meta set version=?', [SCHEMA_VERSION]);
