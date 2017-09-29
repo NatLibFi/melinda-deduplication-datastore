@@ -44,7 +44,7 @@ function migrateFrom5to6(query, connectionPool, logger) {
     const connection = await getConnectionFromPool();
     const allRecordsStream = connection.query('select id, base, record from record');
     let current = 0;
-    let stepSize = Math.ceil(recordCount / 1000);
+    let stepSize = Math.ceil(recordCount / 10000);
 
     allRecordsStream
       .on('error', function(err) { 
