@@ -41,9 +41,15 @@ function createDataStoreService(connectionPool: any): DataStoreService {
         logger.log('info', `Updating database version from ${dbVersion} to ${SCHEMA_VERSION}`);
 
         const migrations = getMigrationCommands({from: dbVersion, to: SCHEMA_VERSION});
-        for (const sqlString of migrations) {
-          logger.log('info', sqlString);
-          await query(sqlString);
+        for (const migration of migrations) {
+          
+          for (const sqlString of migration.migrationSQL) {
+            logger.log('info', sqlString);
+            await query(sqlString);
+          }
+
+          await migration.migrationFn(query, connectionPool, logger);
+
         }
         await query('update meta set version=?', [SCHEMA_VERSION]);
         const dbVersionAfterMigration = await getDatabaseVersion();
