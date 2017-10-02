@@ -1,7 +1,6 @@
 // @flow
 import type { DataStoreService } from './datastore-service.flow';
 
-const promisify = require('es6-promisify');
 const express = require('express');
 const bodyParser = require('body-parser');
 const HttpStatus = require('http-status-codes');
