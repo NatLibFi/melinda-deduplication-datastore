@@ -13,7 +13,7 @@
     "copy:main:packagejson": "cp package.json build",
     "copy:common:packagejson": "cp melinda-deduplication-common/package.json build/melinda-deduplication-common/package.json",
     "copy:migrations": "cp src/schema/migrations/*.sql build/schema/migrations/",
-    "test": "npm run flow && npm run test:unit",
+    "test": "npm run lint && npm run flow && npm run test:unit",
     "test:unit": "BABEL_ENV=test mocha --compilers js:babel-core/register \"melinda-deduplication-common/{,!(node_modules)/**/}*.spec.js\" \"src/**/*.spec.js\"",
     "test:watch": "npm run test:unit -- -w",
     "flow": "flow",
