@@ -6,6 +6,7 @@ const promisify = require('es6-promisify');
 const MarcRecord = require('marc-record-js');
 const moment = require('moment');
 const RecordUtils = require('melinda-deduplication-common/utils/record-utils');
+const LineByLineReader = require('line-by-line');
 
 function getMigrationCommands({from, to}) {
   if (from >= to) {
@@ -54,6 +55,9 @@ function migrateFrom5to6(connectionPool, logger) {
     let current = 0;
     let stepSize = Math.ceil(recordCount / 10000);
 
+    const filename = `/tmp/migration-${Date.now()}.sql`;
+    let data = [];
+
     allRecordsStream
       .on('error', function(err) { 
         connection.release();
@@ -61,32 +65,64 @@ function migrateFrom5to6(connectionPool, logger) {
       })
       .on('result', function(row) {
         
-        connection.pause();
-
         current++;
         if (current % stepSize === 0) {
           const percent = Math.round(current / recordCount * 100 * 100) / 100;
-          logger.log('info', `Migrating ${current}/${recordCount} (${percent}%)`);
+          logger.log('info', `Saving to transient migration file ${current}/${recordCount} (${percent}%)`);
+          fs.appendFileSync(filename, 
+            data.map(d => `${d.recordTimestamp} ${d.base} ${d.id}`).join('\n')
+          );
+          data = [];
         }
         
         const record = MarcRecord.fromString(row.record);
         const recordTimestamp = moment(RecordUtils.getLastModificationDate(record)).format('YYYY-MM-DDTHH:mm:ss.SS');
+        data.push({base: row.base, id: row.id, recordTimestamp});
 
-        query('update record set recordTimestamp=? where base=? and id=?', [recordTimestamp, row.base, row.id])
-          .then(() => {
-            connection.resume();
-          }).catch(error => {
-            logger.log('error', error.message, error);
-            connection.resume();
-          });
-        
       })
       .on('end', () => {
-        const percent = Math.round(current / recordCount * 100 * 100) / 100;
-        logger.log('info', `Migration completed ${current}/${recordCount} (${percent}%)`);
-        connection.release();
-        resolve();
+        
+        updateDatabaseFromFile(logger, recordCount, filename, connection, () => { 
+          connection.release();
+          resolve(); 
+        });
       });
+  });
+}
+
+function updateDatabaseFromFile(logger, recordCount, filename, migrateConnection, cb) {
+
+  let current = 0;
+  let stepSize = Math.ceil(recordCount / 10000);
+  
+  const lr = new LineByLineReader(filename);
+  lr.on('error', function (error) {
+    logger.log('error', error.message, error);
+    process.exit(1);
+  });
+  
+  lr.on('line', function (line) {
+    lr.pause();
+    current++;
+    if (current % stepSize === 0) {
+      const percent = Math.round(current / recordCount * 100 * 100) / 100;
+      logger.log('info', `Updating database from transient migration file ${current}/${recordCount} (${percent}%)`);
+    }
+    const [recordTimestamp, base, id] = line.split(' ');
+  
+    migrateConnection.query('update record set recordTimestamp=? where base=? and id=?', 
+      [recordTimestamp, base, id],
+      error => {
+        if (error) {
+          logger.log('error', error.message, error);
+        }
+        lr.resume();
+      });
+  });
+  
+  lr.on('end', function () {
+    logger.log('info', `Migration completed ${current}/${recordCount}`);
+    cb();
   });
 }
 

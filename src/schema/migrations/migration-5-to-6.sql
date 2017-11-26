@@ -1,5 +1,5 @@
 SELECT count(*) INTO @exist FROM information_schema.columns WHERE table_schema = database() and COLUMN_NAME = 'recordTimestamp' AND table_name = 'record';
-set @query = IF(@exist <= 0, 'alter table record add COLUMN IF NOT EXISTS recordTimestamp DATETIME NOT NULL DEFAULT \'0000-01-01 00:00:00\'', 'select \'Column Exists\' status');
+set @query = IF(@exist <= 0, 'alter table record add COLUMN recordTimestamp DATETIME NOT NULL DEFAULT \'0000-01-01 00:00:00\'', 'select \'Column Exists\' status;');
 prepare statement from @query;
 EXECUTE statement;
 
