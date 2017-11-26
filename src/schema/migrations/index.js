@@ -81,6 +81,9 @@ function migrateFrom5to6(connectionPool, logger) {
 
       })
       .on('end', () => {
+        fs.appendFileSync(filename, 
+          data.map(d => `${d.recordTimestamp} ${d.base} ${d.id}`).join('\n')
+        );
         
         updateDatabaseFromFile(logger, recordCount, filename, connection, () => { 
           connection.release();
