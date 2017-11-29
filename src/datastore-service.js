@@ -87,15 +87,24 @@ function createDataStoreService(connectionPool: any): DataStoreService {
     return candidateService.rebuild();
   }
 
-  async function loadRecord(base, recordId) {
-  
-    const results = await query('SELECT record from record where base=? and id=?', [base, recordId]);
-    const recordString = _.get(results, '[0].record');
-    if (recordString === undefined) {
-      throw NotFoundError();
+  async function loadRecord(base, recordId, includeMetadata=false) {
+    let statement;
+    
+    if (includeMetadata) {
+      statement = 'SELECT * from record where base=? and id=?';
+    } else {
+      statement = 'SELECT record from record where base=? and id=?';
     }
-    const record = MarcRecord.fromString(recordString);
-    return record;    
+
+    const results = await query(statement, [base, recordId]);
+    const resultObject = results.shift();
+    
+    if (resultObject === undefined) {
+      throw NotFoundError();
+    } else {
+      const record = MarcRecord.fromString(resultObject.record);
+      return includeMetadata ? Object.assign(resultObject, { record : record }) : record;
+    }   
   }
 
   async function loadRecordByTimestamp(base, recordId, timestamp) {
@@ -115,16 +124,6 @@ function createDataStoreService(connectionPool: any): DataStoreService {
 
     const record = MarcRecord.fromString(historicRecordString);
     return record;
-  }
-
-  async function loadRecordMeta(base, recordId) {
-
-    const results = await query('SELECT * from record where base=? and id=?', [base, recordId]);
-    const meta = _.get(results, '[0]');
-    if (meta === undefined) {
-      throw NotFoundError();
-    }
-    return _.omit(meta, 'record');
   }
 
   async function loadRecordHistory(base, recordId) {
@@ -149,8 +148,9 @@ function createDataStoreService(connectionPool: any): DataStoreService {
 
     const now = Date.now();
     try {
-      const currentRecord = await loadRecord(base, recordId);
-      const currentRecordMeta = await loadRecordMeta(base, recordId);
+      const currentRecordData = await loadRecord(base, recordId, true);
+      const currentRecord = currentRecordData.record;
+      const currentRecordMeta = _.omit(currentRecordData, 'record');
 
       const currentRecordLastModificationDate = RecordUtils.getLastModificationDate(currentRecord);
       const incomingRecordLastModificationDate = RecordUtils.getLastModificationDate(record);

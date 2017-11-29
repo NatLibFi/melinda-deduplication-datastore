@@ -37,10 +37,12 @@ function createHTTPService(dataStoreService: DataStoreService) {
   app.get('/record/:base/:id', async function (req, res) {
     const base = req.params.base;
     const recordId = req.params.id;
+     
     logger.log('info', 'get request for record', req.params);
 
     try {
-      const record = await dataStoreService.loadRecord(base, recordId);
+      const includeMetadata = req.query.includeMetadata === '1' || req.query.includeMetadata === 'true';
+      const record = await dataStoreService.loadRecord(base, recordId, includeMetadata);
       res.send(record);
     } catch(error) {
       if (error.name === 'NOT_FOUND') {
