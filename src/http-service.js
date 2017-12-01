@@ -5,8 +5,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const HttpStatus = require('http-status-codes');
 const MarcRecord = require('marc-record-js');
+const moment = require('moment');
 const debug = require('debug')('http-service');
 const logger = require('melinda-deduplication-common/utils/logger');
+const { RECORD_TIMESTAMP_FORMAT } = require('./datastore-service');
 
 function createHTTPService(dataStoreService: DataStoreService) {
   const app = express();
@@ -31,6 +33,61 @@ function createHTTPService(dataStoreService: DataStoreService) {
       res.sendStatus(error.statusCode);
     } else {
       next();
+    }
+  });
+  
+  app.get('/records/:base/', async function (req, res) {
+    const base = req.params.base;
+    
+    logger.log('info', 'get request for records', req.params);
+    
+    try {
+      const limit = Number.isInteger(Number(req.query.limit)) ? Number(req.query.limit) : undefined;      
+      const includeMetadata = req.query.includeMetadata === '1' || req.query.includeMetadata === 'true';
+      const metadataOnly = req.query.metadataOnly === '1' || req.query.metadataOnly === 'true';      
+      const startTime = req.query.startTime ? parseTimestamp(req.query.startTime) : undefined;
+      const endTime = req.query.endTime ? parseTimestamp(req.query.endTime, false) : undefined;      
+      
+      if (req.query.tempTable) {
+        const offset = Number.isInteger(Number(req.query.offset)) ? Number(req.query.offset) : undefined;
+        const records = await dataStoreService.loadRecordsResume(req.query.tempTable, { limit, offset, includeMetadata, metadataOnly }); 
+        res.send(records); 
+      } else {
+        const queryCallback = generateQueryCallback(startTime, endTime);
+        const records = await dataStoreService.loadRecords(base, { queryCallback, limit, includeMetadata, metadataOnly }); 
+        res.send(records);
+      }      
+    } catch(error) {
+      if (error.code === 'ER_NO_SUCH_TABLE') { 
+        res.sendStatus(HttpStatus.BAD_REQUEST);
+      } else {
+        logger.log('error', error);
+        res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+        
+    function parseTimestamp(timestamp, dayStart=true) {
+      const parsed = moment(timestamp);
+      /* If the time portion is missing and the timestamp is a day end constraint we want to set the time portion to last millisecond */
+      if (!/T/.test(timestamp) && !dayStart) {        
+        parsed.hour(23).minutes(59).seconds(59).milliseconds(999);
+      }
+      return parsed;
+    }
+    
+    function generateQueryCallback(startTime, endTime) {
+      const args = [];
+      let newQuery = '';      
+      if (startTime) {
+        newQuery += ' and recordTimestamp >= ?';
+        args.push(startTime.format(RECORD_TIMESTAMP_FORMAT));
+      }
+      if (endTime) {
+        newQuery += ' and recordTimestamp <= ?';
+        args.push(endTime.format(RECORD_TIMESTAMP_FORMAT));
+      }
+      
+      return query => { return { statement: query+newQuery, args };};
     }
   });
 

@@ -6,7 +6,7 @@ const logger = require('melinda-deduplication-common/utils/logger');
 logger.log('info', 'Starting melinda-deduplication-datastore');
 
 const utils = require('melinda-deduplication-common/utils/utils');
-const createDataStoreService = require('./datastore-service');
+const { createDataStoreService } = require('./datastore-service');
 const createHTTPService = require('./http-service');
 
 const DATASTORE_HTTP_PORT = utils.readEnvironmentVariable('DATASTORE_HTTP_PORT', 8080);
@@ -18,6 +18,7 @@ const DATASTORE_MYSQL_PASSWORD = utils.readEnvironmentVariable('DATASTORE_MYSQL_
 const DATASTORE_MYSQL_DATABASE = utils.readEnvironmentVariable('DATASTORE_MYSQL_DATABASE');
 
 const REBUILD_CANDIDATE_TERMS =  utils.readEnvironmentVariable('REBUILD_CANDIDATE_TERMS', false);
+const TEMP_TABLES_LIFETIME = utils.readEnvironmentVariable('TEMP_TABLES_LIFETIME', 18000);
 
 const dbConnectionPoolConfiguration = {
   host: DATASTORE_MYSQL_HOST,
@@ -48,6 +49,9 @@ async function startDatastore() {
   if (REBUILD_CANDIDATE_TERMS) {
     await dataStoreService.rebuildCandidateTerms();
   }
+  
+  await dataStoreService.createTempTablesMeta();
+  setInterval(dataStoreService.dropTempTables, TEMP_TABLES_LIFETIME, TEMP_TABLES_LIFETIME);
   
   const httpService = createHTTPService(dataStoreService);
 
