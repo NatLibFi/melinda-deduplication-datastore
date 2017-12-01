@@ -18,7 +18,7 @@ const DATASTORE_MYSQL_PASSWORD = utils.readEnvironmentVariable('DATASTORE_MYSQL_
 const DATASTORE_MYSQL_DATABASE = utils.readEnvironmentVariable('DATASTORE_MYSQL_DATABASE');
 
 const REBUILD_CANDIDATE_TERMS =  utils.readEnvironmentVariable('REBUILD_CANDIDATE_TERMS', false);
-const TEMP_TABLES_LIFETIME = utils.readEnvironmentVariable('TEMP_TABLES_LIFETIME', 18000);
+const TEMP_TABLES_LIFETIME = utils.readEnvironmentVariable('TEMP_TABLES_LIFETIME', 3000000);
 
 const dbConnectionPoolConfiguration = {
   host: DATASTORE_MYSQL_HOST,
