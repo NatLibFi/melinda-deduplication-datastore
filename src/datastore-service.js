@@ -116,7 +116,7 @@ function createDataStoreService(connectionPool: any): DataStoreService {
   
   // $FlowFixMe: Flow doesn't seem to understand destructuring optional object parameter with defaults
   function generateRecordsTempTableQuery(tableName, { limit=undefined, offset=0, metadataOnly=false } = {}) {
-    let statement = `select ${metadataOnly ? '*' : '*,record'} from ${tableName} temp, record where temp.id = record.id`;
+    let statement = `select temp.id, record.recordTimestamp, record.parentId, record.timestamp ${metadataOnly ? '' : ', record'} from ${tableName} temp, record where temp.id = record.id`;    
     if (limit && offset) {
       statement += ` limit ${offset},${limit}`;
     } else if (limit) {
@@ -158,7 +158,7 @@ function createDataStoreService(connectionPool: any): DataStoreService {
   
   async function loadRecords(base, { queryCallback=q => { return { statement: q, args: [] }; }, limit=undefined, includeMetadata=false, metadataOnly=false } = {}) {            
     if (Number.isInteger(limit)) {
-      const { statement, args } = queryCallback('SELECT id,parentId,timestamp,recordTimestamp from record where base=?');
+      const { statement, args } = queryCallback('SELECT id from record where base=?');
       const tableName = `temp${generateUUID().replace(/-/g, '')}`;
       
       await query(`CREATE TABLE ${tableName} ENGINE=MEMORY ${statement} ORDER BY recordTimestamp DESC`, [base].concat(args));
