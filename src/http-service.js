@@ -58,8 +58,12 @@ function createHTTPService(dataStoreService: DataStoreService) {
         res.send(records);
       }      
     } catch(error) {
-      if (error.code === 'ER_NO_SUCH_TABLE') { 
-        res.sendStatus(HttpStatus.BAD_REQUEST);
+      if (error.code === 'ER_NO_SUCH_TABLE') {
+        res.status(HttpStatus.BAD_REQUEST);
+        res.send({ error: 'Temporary table does not exist' });
+      } else if (error.code === 'ER_TRUNCATED_WRONG_VALUE') {
+        res.status(HttpStatus.BAD_REQUEST);
+        res.send({ error: 'Invalid date' });
       } else {
         logger.log('error', error);
         res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
