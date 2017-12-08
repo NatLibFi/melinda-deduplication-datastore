@@ -104,10 +104,10 @@ function createDataStoreService(connectionPool: any): DataStoreService {
   
   async function createTempTablesMeta() {
     const results = await query('SELECT table_name from information_schema.tables where table_name like ?', ['temp%']);
-    results.forEach(async result => await query(`DROP TABLE if exists ${result.table_name}`));
+    results.forEach(async result => await query(`DROP TABLE IF EXISTS ${result.table_name}`));
     
-    await query('CREATE TABLE if not exists temp_tables_meta (name VARCHAR(100) primary key, access_time DATETIME) ENGINE=MEMORY');
-    await query('TRUNCATE TABLE temp_tables_meta');
+    await query('DROP TABLE IF EXISTS temp_tables_meta');
+    await query('CREATE TABLE temp_tables_meta (name VARCHAR(100) primary key, access_time DATETIME) ENGINE=MEMORY');
   }
   
   async function updateTempTableAccessTime(tableName) {
@@ -143,7 +143,7 @@ function createDataStoreService(connectionPool: any): DataStoreService {
   }
   
   async function loadRecordsResume(tempTable, { limit=undefined, offset=0, includeMetadata=false, metadataOnly=false } = {}) {
-    const numberOfRows = await getNumberOfTableRows(tempTable)
+    const numberOfRows = await getNumberOfTableRows(tempTable);
     const results = await query(generateRecordsTempTableQuery(tempTable, { limit, offset, metadataOnly }));
     if (results.length < limit) {
       await dropTempTable(tempTable);
@@ -151,7 +151,7 @@ function createDataStoreService(connectionPool: any): DataStoreService {
       await updateTempTableAccessTime(tempTable);
     }
     return {
-      totalLength: numberOfRows,
+      totalLength: numberOfRows,      
       results: formatRecordsQueryResults(results, includeMetadata, metadataOnly)
     };
   }
@@ -162,11 +162,10 @@ function createDataStoreService(connectionPool: any): DataStoreService {
       const tableName = `temp${generateUUID().replace(/-/g, '')}`;
       
       await query(`CREATE TABLE ${tableName} ENGINE=MEMORY ${statement} ORDER BY recordTimestamp DESC`, [base].concat(args));
-      
       const numberOfRows = await getNumberOfTableRows(tableName);
       
       // $FlowFixMe: See https://github.com/facebook/flow/issues/183
-      if (numberOfRows > limit) {;
+      if (numberOfRows > limit) {
         const results = await query(generateRecordsTempTableQuery(tableName, { limit, metadataOnly }));
         await updateTempTableAccessTime(tableName);
         return {
