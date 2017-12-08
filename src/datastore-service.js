@@ -151,7 +151,8 @@ function createDataStoreService(connectionPool: any): DataStoreService {
       await updateTempTableAccessTime(tempTable);
     }
     return {
-      totalLength: numberOfRows,      
+      totalLength: numberOfRows,
+      offset: offset,   
       results: formatRecordsQueryResults(results, includeMetadata, metadataOnly)
     };
   }
@@ -169,7 +170,8 @@ function createDataStoreService(connectionPool: any): DataStoreService {
         const results = await query(generateRecordsTempTableQuery(tableName, { limit, metadataOnly }));
         await updateTempTableAccessTime(tableName);
         return {
-          tempTable: tableName,          
+          tempTable: tableName,
+          offset: 0,      
           totalLength: numberOfRows,
           results: formatRecordsQueryResults(results, includeMetadata, metadataOnly)
         };
