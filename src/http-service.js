@@ -47,23 +47,23 @@ function createHTTPService(dataStoreService: DataStoreService) {
       const metadataOnly = req.query.metadataOnly === '1' || req.query.metadataOnly === 'true';      
       const startTime = req.query.startTime ? parseTimestamp(req.query.startTime) : undefined;
       const endTime = req.query.endTime ? parseTimestamp(req.query.endTime, false) : undefined;      
-      
+                  
       if (req.query.tempTable) {
         const offset = Number.isInteger(Number(req.query.offset)) ? Number(req.query.offset) : undefined;
         const records = await dataStoreService.loadRecordsResume(req.query.tempTable, { limit, offset, includeMetadata, metadataOnly }); 
         res.send(records); 
-      } else {
+      } else {                        
         const queryCallback = generateQueryCallback(startTime, endTime);
         const records = await dataStoreService.loadRecords(base, { queryCallback, limit, includeMetadata, metadataOnly }); 
         res.send(records);
       }      
     } catch(error) {
-      if (error.code === 'ER_NO_SUCH_TABLE') {
-        res.status(HttpStatus.BAD_REQUEST);
-        res.send({ error: 'Temporary table does not exist' });
-      } else if (error.code === 'ER_TRUNCATED_WRONG_VALUE') {
+      if (error.message === 'Invalid date') {
         res.status(HttpStatus.BAD_REQUEST);
         res.send({ error: 'Invalid date' });
+      } else if (error.code === 'ER_NO_SUCH_TABLE') {
+        res.status(HttpStatus.BAD_REQUEST);
+        res.send({ error: 'Temporary table does not exist' });
       } else {
         logger.log('error', error);
         res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -83,12 +83,20 @@ function createHTTPService(dataStoreService: DataStoreService) {
       const args = [];
       let newQuery = '';      
       if (startTime) {
-        newQuery += ' and recordTimestamp >= ?';
-        args.push(startTime.format(RECORD_TIMESTAMP_FORMAT));
+        if (startTime.isValid()) {
+          newQuery += ' and recordTimestamp >= ?';
+          args.push(startTime.format(RECORD_TIMESTAMP_FORMAT));
+        } else {
+          throw new Error('Invalid date');
+        }
       }
       if (endTime) {
-        newQuery += ' and recordTimestamp <= ?';
-        args.push(endTime.format(RECORD_TIMESTAMP_FORMAT));
+        if (endTime.isValid()) {
+          newQuery += ' and recordTimestamp <= ?';
+          args.push(endTime.format(RECORD_TIMESTAMP_FORMAT));
+        } else {
+          throw new Error('Invalid date');
+        }
       }
       
       return query => { return { statement: query+newQuery, args };};
