@@ -74,6 +74,34 @@ function createHTTPService(dataStoreService: DataStoreService) {
     }
   });
 
+  app.get('/records/:base/timestamps/earliest', async function (req, res) {
+    const base = req.params.base;
+    logger.log('info', 'get request for earliest record timestamp', req.params);
+
+    try  {            
+      const timestamp = await dataStoreService.getEarliestRecordTimestamp(base);
+      res.status(HttpStatus.OK);
+      res.json({ timestamp });
+    } catch (error) {
+      logger.log('error', error);
+      return res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  });
+  
+  app.get('/records/:base/timestamps/latest', async function (req, res) {
+    const base = req.params.base;
+    logger.log('info', 'get request for latest record timestamp', req.params);
+
+    try  {            
+      const timestamp = await dataStoreService.getLatestRecordTimestamp(base);
+      res.status(HttpStatus.OK);
+      res.json({ timestamp });
+    } catch (error) {
+      logger.log('error', error);
+      return res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  });
+
   app.put('/record/:base/:id', async function (req, res) {
     const base = req.params.base;
     const recordId = req.params.id;

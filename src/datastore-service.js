@@ -107,6 +107,16 @@ function createDataStoreService(connectionPool: any): DataStoreService {
     }   
   }
 
+  async function getEarliestRecordTimestamp(base) {
+    const result = await query('SELECT recordTimestamp from record ORDER BY recordTimestamp ASC LIMIT 1', [base]);
+    return result.shift().recordTimestamp;
+  }
+  
+  async function getLatestRecordTimestamp(base) {
+    const result = await query('SELECT recordTimestamp from record ORDER BY recordTimestamp DESC LIMIT 1', [base]);
+    return result.shift().recordTimestamp;
+  }
+  
   async function loadRecordByTimestamp(base, recordId, timestamp) {
 
     const deltaRows = await query('SELECT delta from delta where base=? and id=? and timestamp >=? ORDER BY timestamp DESC', [base, recordId, timestamp]);
@@ -214,6 +224,8 @@ function createDataStoreService(connectionPool: any): DataStoreService {
   return {
     rebuildCandidateTerms,
     updateSchema,
+    getEarliestRecordTimestamp,
+    getLatestRecordTimestamp,
     loadRecord,
     loadRecordByTimestamp,
     saveRecord,
