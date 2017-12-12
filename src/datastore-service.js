@@ -144,17 +144,24 @@ function createDataStoreService(connectionPool: any): DataStoreService {
   
   async function loadRecordsResume(tempTable, { limit=undefined, offset=0, includeMetadata=false, metadataOnly=false } = {}) {
     const numberOfRows = await getNumberOfTableRows(tempTable);
-    const results = await query(generateRecordsTempTableQuery(tempTable, { limit, offset, metadataOnly }));
-    if (results.length < limit) {
+    const rows = await query(generateRecordsTempTableQuery(tempTable, { limit, offset, metadataOnly }));    
+    
+    if (rows.length < limit) {
       await dropTempTable(tempTable);
+      return {
+        offset,
+        totalLength: numberOfRows,
+        results: formatRecordsQueryResults(rows, includeMetadata, metadataOnly)
+      };
     } else {
       await updateTempTableAccessTime(tempTable);
+      return {
+        tempTable,
+        offset,
+        totalLength: numberOfRows,
+        results: formatRecordsQueryResults(rows, includeMetadata, metadataOnly)
+      };
     }
-    return {
-      totalLength: numberOfRows,
-      offset: offset,   
-      results: formatRecordsQueryResults(results, includeMetadata, metadataOnly)
-    };
   }
   
   async function loadRecords(base, { queryCallback=q => { return { statement: q, args: [] }; }, limit=undefined, includeMetadata=false, metadataOnly=false } = {}) {            
@@ -178,7 +185,9 @@ function createDataStoreService(connectionPool: any): DataStoreService {
       } else {        
         const results = await query(generateRecordsTempTableQuery(tableName, { limit, metadataOnly }));
         await dropTempTable(tableName);
-        return formatRecordsQueryResults(results, includeMetadata, metadataOnly);
+        return {          
+          results: formatRecordsQueryResults(results, includeMetadata, metadataOnly)
+        };
       }            
     } else {
       const { statement, args } = queryCallback('SELECT * from record where base=?');
@@ -336,13 +345,13 @@ function createDataStoreService(connectionPool: any): DataStoreService {
     loadRecordHistory,
     loadCandidates: candidateService.loadCandidates
   };
-  
+    
   function NotFoundError() {
     const notFoundError = new Error();
     notFoundError.name = 'NOT_FOUND';
     throw notFoundError;
   }
-  
+    
   function RecordIsOlderError() {
     const error = new Error();
     error.name = 'RecordIsOlderError';

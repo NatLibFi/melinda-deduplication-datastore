@@ -5,8 +5,8 @@ import type { DuplicateCandidate } from 'types/duplicate-candidate.flow';
 export type DataStoreService = {
     updateSchema: () => Promise<any>,
     saveRecord: (base: string, recordId: string, record: MarcRecord) => Promise<any>,
-    loadRecordsResume: (tempTable: string, {limit?: number|void, offset?: number, includeMetadata?: boolean, metadataOnly?: boolean}) => Promise<any|Array<MarcRecord|any>>,
-    loadRecords: (base: string, {queryCallback: Function, limit?: number|void, includeMetadata?: boolean, metadataOnly?: boolean}) => Promise<any|Array<MarcRecord|any>>,
+    loadRecordsResume: (tempTable: string, {limit?: number|void, offset?: number, includeMetadata?: boolean, metadataOnly?: boolean}) => Promise<any>,
+    loadRecords: (base: string, {queryCallback: Function, limit?: number|void, includeMetadata?: boolean, metadataOnly?: boolean}) => Promise<any>,
     getEarliestRecordTimestamp: (base: string) => Promise<Object>,
     getLatestRecordTimestamp: (base: string) => Promise<Object>,
     loadRecord: (base: string, recordId: string, includeMetadata: boolean) => Promise<MarcRecord|any>,
