@@ -1,13 +1,9 @@
 [ignore]
-./build
+./dist
 
 [include]
+./src
 
 [libs]
-node_modules/*
-melinda-deduplication-common/node_modules/*
-
 [options]
-module.system.node.resolve_dirname=node_modules
-module.system.node.resolve_dirname=melinda-deduplication-common
-module.system.node.resolve_dirname=.
+module.name_mapper='^\(@natlibfi/melinda-deduplication-common/\)\(.*\)' -> '\1/dist/\2'

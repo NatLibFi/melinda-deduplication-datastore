@@ -2,11 +2,6 @@ language: node_js
 node_js:
   - "7"
   - "node"
-git:
-    submodules: false
-before_install:
-    - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
-    - git submodule update --init --recursive
 after_script:
   - if test "$TRAVIS_NODE_VERSION" != "7";then exit 0;fi
   - if test $TRAVIS_BRANCH = "master";then JOB=$JOB_PROD;elif test $TRAVIS_BRANCH = "test";then JOB=$JOB_TEST;fi

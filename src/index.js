@@ -1,11 +1,38 @@
+/**
+ *
+ * @licstart  The following is the entire license notice for the JavaScript code in this file. 
+ *
+ * Datastore microservice of Melinda deduplication system
+ *
+ * Copyright (c) 2017 University Of Helsinki (The National Library Of Finland)
+ *
+ * This file is part of melinda-deduplication-datastore
+ *
+ * melinda-deduplication-datastore is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *  
+ * melinda-deduplication-datastore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *  
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @licend  The above is the entire license notice
+ * for the JavaScript code in this file.
+ *
+ **/
 // @flow
 
 const mysql = require('mysql');
 
-const logger = require('melinda-deduplication-common/utils/logger');
+const logger = require('@natlibfi/melinda-deduplication-common/utils/logger');
 logger.log('info', 'Starting melinda-deduplication-datastore');
 
-const utils = require('melinda-deduplication-common/utils/utils');
+const utils = require('@natlibfi/melinda-deduplication-common/utils/utils');
 const { createDataStoreService } = require('./datastore-service');
 const createHTTPService = require('./http-service');
 

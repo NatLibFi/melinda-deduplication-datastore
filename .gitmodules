@@ -1,3 +1,0 @@
-[submodule "melinda-deduplication-common"]
-	path = melinda-deduplication-common
-	url = git@github.com:NatLibFi/melinda-deduplication-common.git

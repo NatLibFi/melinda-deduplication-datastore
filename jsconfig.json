@@ -2,13 +2,11 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "~/*": [ "src/*" ],
-      "melinda-deduplication-common": ["./melinda-deduplication-common/*"]
+      "~/*": [ "src/*" ]
     }
   },
   "exclude": [
-    "node_modules",
-    "melinda-deduplication-common/node_modules"
+    "node_modules"
   ]
 }
 

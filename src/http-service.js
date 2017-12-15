@@ -1,3 +1,30 @@
+/**
+ *
+ * @licstart  The following is the entire license notice for the JavaScript code in this file. 
+ *
+ * Datastore microservice of Melinda deduplication system
+ *
+ * Copyright (c) 2017 University Of Helsinki (The National Library Of Finland)
+ *
+ * This file is part of melinda-deduplication-datastore
+ *
+ * melinda-deduplication-datastore is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *  
+ * melinda-deduplication-datastore is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *  
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @licend  The above is the entire license notice
+ * for the JavaScript code in this file.
+ *
+ **/
 // @flow
 import type { DataStoreService } from './datastore-service.flow';
 
@@ -7,8 +34,8 @@ const HttpStatus = require('http-status-codes');
 const MarcRecord = require('marc-record-js');
 const moment = require('moment');
 const debug = require('debug')('http-service');
-const logger = require('melinda-deduplication-common/utils/logger');
-const { RECORD_TIMESTAMP_FORMAT } = require('./datastore-service');
+const logger = require('@natlibfi/melinda-deduplication-common/utils/logger');
+const { DATASTORE_CHANGE_TIMESTAMP_FORMAT } = require('@natlibfi/melinda-deduplication-common/utils/datastore-connector');
 
 function createHTTPService(dataStoreService: DataStoreService) {
   const app = express();
@@ -44,18 +71,20 @@ function createHTTPService(dataStoreService: DataStoreService) {
     try {
       const limit = Number.isInteger(Number(req.query.limit)) ? Number(req.query.limit) : undefined;      
       const includeMetadata = req.query.includeMetadata === '1' || req.query.includeMetadata === 'true';
-      const metadataOnly = req.query.metadataOnly === '1' || req.query.metadataOnly === 'true';      
-      const startTime = req.query.startTime ? parseTimestamp(req.query.startTime) : undefined;
-      const endTime = req.query.endTime ? parseTimestamp(req.query.endTime, false) : undefined;      
-                  
+      const metadataOnly = req.query.metadataOnly === '1' || req.query.metadataOnly === 'true';          
+      
       if (req.query.tempTable) {
         const offset = Number.isInteger(Number(req.query.offset)) ? Number(req.query.offset) : undefined;
         const records = await dataStoreService.loadRecordsResume(req.query.tempTable, { limit, offset, includeMetadata, metadataOnly }); 
         res.send(records); 
-      } else {                        
-        const queryCallback = generateQueryCallback(startTime, endTime);
-        const records = await dataStoreService.loadRecords(base, { queryCallback, limit, includeMetadata, metadataOnly }); 
-        res.send(records);
+      } else {
+        const queryCallback = generateQueryCallback();
+        const records = await dataStoreService.loadRecords(base, { queryCallback, limit, includeMetadata, metadataOnly });
+        if (records.length === 0) {
+          res.sendStatus(HttpStatus.NOT_FOUND); 
+        } else {
+          res.send(records);
+        }
       }      
     } catch(error) {
       if (error.message === 'Invalid date') {
@@ -69,7 +98,7 @@ function createHTTPService(dataStoreService: DataStoreService) {
         res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
-        
+    
     function parseTimestamp(timestamp, dayStart=true) {
       const parsed = moment(timestamp);
       /* If the time portion is missing and the timestamp is a day end constraint we want to set the time portion to last millisecond */
@@ -79,24 +108,34 @@ function createHTTPService(dataStoreService: DataStoreService) {
       return parsed;
     }
     
-    function generateQueryCallback(startTime, endTime) {
+    function generateQueryCallback() {      
       const args = [];
-      let newQuery = '';      
-      if (startTime) {
+      let newQuery = '';
+      
+      if (req.query.startTime) {
+        const startTime = parseTimestamp(req.query.startTime);
         if (startTime.isValid()) {
           newQuery += ' and recordTimestamp >= ?';
-          args.push(startTime.format(RECORD_TIMESTAMP_FORMAT));
+          //args.push(startTime.format(RECORD_TIMESTAMP_FORMAT));
         } else {
           throw new Error('Invalid date');
         }
       }
-      if (endTime) {
+      
+      if (req.query.endTime) {
+        const endTime = parseTimestamp(req.query.endTime);
         if (endTime.isValid()) {
           newQuery += ' and recordTimestamp <= ?';
-          args.push(endTime.format(RECORD_TIMESTAMP_FORMAT));
+          // args.push(endTime.format(RECORD_TIMESTAMP_FORMAT));
         } else {
           throw new Error('Invalid date');
         }
+      }
+      
+      if (req.query.low) {
+        const lowTags = [].concat(req.query.low);
+        args.push(lowTags.join('|'));        
+        newQuery += ' and lowTags regexp ?';  
       }
       
       return query => { return { statement: query+newQuery, args };};
@@ -111,7 +150,7 @@ function createHTTPService(dataStoreService: DataStoreService) {
 
     try {
       const includeMetadata = req.query.includeMetadata === '1' || req.query.includeMetadata === 'true';
-      const record = await dataStoreService.loadRecord(base, recordId, includeMetadata);
+      const record = await dataStoreService.loadRecord(base, recordId, includeMetadata);      
       res.send(record);
     } catch(error) {
       if (error.name === 'NOT_FOUND') {
@@ -140,6 +179,23 @@ function createHTTPService(dataStoreService: DataStoreService) {
       }
       logger.log('error', error);
       res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  });
+  
+  app.get('/lowtags', async function (req, res) {
+    logger.log('info', 'get request for low tags');
+
+    try  {            
+      const lowTags = await dataStoreService.getLowTags();
+      res.status(HttpStatus.OK);
+      res.json(lowTags);
+    } catch (error) {
+      if (error.name === 'NOT_FOUND') {
+        return res.sendStatus(HttpStatus.NOT_FOUND);
+      } else {
+        logger.log('error', error);
+        return res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+      }
     }
   });
 
@@ -178,10 +234,17 @@ function createHTTPService(dataStoreService: DataStoreService) {
 
     try  {
       
+      const changeType = req.query.changeType;
+      const changeTimestamp = moment(req.query.changeTimestamp, DATASTORE_CHANGE_TIMESTAMP_FORMAT);
+      
+      if (!changeTimestamp.isValid()) {
+        return res.sendStatus(HttpStatus.BAD_REQUEST);
+      }
+      
       const record = parseRecord(req.body);
       debug(`Record:\n${record.toString()}`);
 
-      await dataStoreService.saveRecord(base, recordId, record);
+      await dataStoreService.saveRecord(base, recordId, record, changeType, changeTimestamp);
       res.sendStatus(HttpStatus.OK);
 
     } catch(error) {
