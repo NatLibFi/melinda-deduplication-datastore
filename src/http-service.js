@@ -44,18 +44,20 @@ function createHTTPService(dataStoreService: DataStoreService) {
     try {
       const limit = Number.isInteger(Number(req.query.limit)) ? Number(req.query.limit) : undefined;      
       const includeMetadata = req.query.includeMetadata === '1' || req.query.includeMetadata === 'true';
-      const metadataOnly = req.query.metadataOnly === '1' || req.query.metadataOnly === 'true';      
-      const startTime = req.query.startTime ? parseTimestamp(req.query.startTime) : undefined;
-      const endTime = req.query.endTime ? parseTimestamp(req.query.endTime, false) : undefined;      
-                  
+      const metadataOnly = req.query.metadataOnly === '1' || req.query.metadataOnly === 'true';          
+      
       if (req.query.tempTable) {
         const offset = Number.isInteger(Number(req.query.offset)) ? Number(req.query.offset) : undefined;
         const records = await dataStoreService.loadRecordsResume(req.query.tempTable, { limit, offset, includeMetadata, metadataOnly }); 
         res.send(records); 
-      } else {                        
-        const queryCallback = generateQueryCallback(startTime, endTime);
-        const records = await dataStoreService.loadRecords(base, { queryCallback, limit, includeMetadata, metadataOnly }); 
-        res.send(records);
+      } else {
+        const queryCallback = generateQueryCallback();
+        const records = await dataStoreService.loadRecords(base, { queryCallback, limit, includeMetadata, metadataOnly });
+        if (records.length === 0) {
+          res.sendStatus(HttpStatus.NOT_FOUND); 
+        } else {
+          res.send(records);
+        }
       }      
     } catch(error) {
       if (error.message === 'Invalid date') {
@@ -69,7 +71,7 @@ function createHTTPService(dataStoreService: DataStoreService) {
         res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
-        
+    
     function parseTimestamp(timestamp, dayStart=true) {
       const parsed = moment(timestamp);
       /* If the time portion is missing and the timestamp is a day end constraint we want to set the time portion to last millisecond */
@@ -79,10 +81,12 @@ function createHTTPService(dataStoreService: DataStoreService) {
       return parsed;
     }
     
-    function generateQueryCallback(startTime, endTime) {
+    function generateQueryCallback() {      
       const args = [];
-      let newQuery = '';      
-      if (startTime) {
+      let newQuery = '';
+      
+      if (req.query.startTime) {
+        const startTime = parseTimestamp(req.query.startTime);
         if (startTime.isValid()) {
           newQuery += ' and recordTimestamp >= ?';
           args.push(startTime.format(RECORD_TIMESTAMP_FORMAT));
@@ -90,13 +94,21 @@ function createHTTPService(dataStoreService: DataStoreService) {
           throw new Error('Invalid date');
         }
       }
-      if (endTime) {
+      
+      if (req.query.endTime) {
+        const endTime = parseTimestamp(req.query.endTime);
         if (endTime.isValid()) {
           newQuery += ' and recordTimestamp <= ?';
           args.push(endTime.format(RECORD_TIMESTAMP_FORMAT));
         } else {
           throw new Error('Invalid date');
         }
+      }
+      
+      if (req.query.low) {
+        const lowTags = [].concat(req.query.low);
+        args.push(lowTags.join('|'));        
+        newQuery += ' and lowTags regexp ?';  
       }
       
       return query => { return { statement: query+newQuery, args };};
@@ -111,7 +123,7 @@ function createHTTPService(dataStoreService: DataStoreService) {
 
     try {
       const includeMetadata = req.query.includeMetadata === '1' || req.query.includeMetadata === 'true';
-      const record = await dataStoreService.loadRecord(base, recordId, includeMetadata);
+      const record = await dataStoreService.loadRecord(base, recordId, includeMetadata);      
       res.send(record);
     } catch(error) {
       if (error.name === 'NOT_FOUND') {
@@ -140,6 +152,24 @@ function createHTTPService(dataStoreService: DataStoreService) {
       }
       logger.log('error', error);
       res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  });
+  
+  app.get('/records/:base/lowtags', async function (req, res) {
+    const base = req.params.base;
+    logger.log('info', 'get request for low tags', req.params);
+
+    try  {            
+      const lowTags = await dataStoreService.getLowTags(base);
+      res.status(HttpStatus.OK);
+      res.json(lowTags);
+    } catch (error) {
+      if (error.name === 'NOT_FOUND') {
+        return res.sendStatus(HttpStatus.NOT_FOUND);
+      } else {
+        logger.log('error', error);
+        return res.sendStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+      }
     }
   });
 

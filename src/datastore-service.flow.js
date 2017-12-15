@@ -7,6 +7,7 @@ export type DataStoreService = {
     saveRecord: (base: string, recordId: string, record: MarcRecord) => Promise<any>,
     loadRecordsResume: (tempTable: string, {limit?: number|void, offset?: number, includeMetadata?: boolean, metadataOnly?: boolean}) => Promise<any>,
     loadRecords: (base: string, {queryCallback: Function, limit?: number|void, includeMetadata?: boolean, metadataOnly?: boolean}) => Promise<any>,
+    getLowTags: (base: string) => Promise<Array<string>>,
     getEarliestRecordTimestamp: (base: string) => Promise<Object>,
     getLatestRecordTimestamp: (base: string) => Promise<Object>,
     loadRecord: (base: string, recordId: string, includeMetadata: boolean) => Promise<MarcRecord|any>,
